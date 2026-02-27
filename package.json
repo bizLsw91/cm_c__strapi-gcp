@@ -25,6 +25,7 @@
     "mysql": "^2.18.1",
     "mysql2": "^3.9.8",
     "nodemailer": "^6.10.0",
+    "pg": "^8.19.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
@@ -43,7 +44,7 @@
     "rollup": "npm:@rollup/wasm-node"
   },
   "engines": {
-    "node": "20.18.1",
+    "node": "20.20.0",
     "npm": "11.1.0"
   },
   "strapi": {
