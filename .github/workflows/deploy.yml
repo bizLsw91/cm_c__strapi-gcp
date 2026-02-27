@@ -21,6 +21,14 @@ jobs:
       - name: Log in to GHCR
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u bizLsw91 --password-stdin
 
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Build Docker image
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -40,7 +48,7 @@ jobs:
             --build-arg SMTP_HOST=smtp.naver.com \
             --build-arg SMTP_PORT=587 \
             --build-arg SMTP_USERNAME=mm999999@naver.com \
-            --build-arg "URL=https://admin.culturemarketing.co.kr" \
+            --build-arg "URL=http://136.109.215.204:1337" \
             --build-arg ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }} \
             --build-arg API_TOKEN_SALT=${{ secrets.API_TOKEN_SALT }} \
             --build-arg "APP_KEYS=${{ secrets.APP_KEYS }}" \
