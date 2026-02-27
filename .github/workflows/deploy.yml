@@ -22,31 +22,34 @@ jobs:
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u bizLsw91 --password-stdin
 
       - name: Build Docker image
-        run: >
-          docker build
-          --build-arg DATABASE_CLIENT=postgres
-          --build-arg DATABASE_HOST=aws-1-ap-northeast-2.pooler.supabase.com
-          --build-arg DATABASE_NAME=postgres
-          --build-arg DATABASE_PORT=5432
-          --build-arg DATABASE_SSL=false
-          --build-arg DATABASE_USERNAME=postgres.zgnaauszrdmwvuulvnfo
-          --build-arg FIREBASE_STORAGE_BUCKET=store-892ea.firebasestorage.app
-          --build-arg GENERATE_SOURCEMAP=false
-          --build-arg HOST=0.0.0.0
-          --build-arg PORT=1337
-          --build-arg SMTP_HOST=smtp.naver.com
-          --build-arg SMTP_PORT=587
-          --build-arg SMTP_USERNAME=mm999999@naver.com
-          --build-arg URL=https://admin.culturemarketing.co.kr
-          --build-arg ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }}
-          --build-arg API_TOKEN_SALT=${{ secrets.API_TOKEN_SALT }}
-          --build-arg APP_KEYS=${{ secrets.APP_KEYS }}
-          --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
-          --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }}
-          --build-arg SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-          --build-arg TRANSFER_TOKEN_SALT=${{ secrets.TRANSFER_TOKEN_SALT }}
-          --build-arg FIREBASE_SERVICE_ACCOUNT=${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          -t ghcr.io/bizlsw91/cm_c__strapi-gcp:latest .
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/firebase.json
+          docker build \
+            --build-arg DATABASE_CLIENT=postgres \
+            --build-arg DATABASE_HOST=aws-1-ap-northeast-2.pooler.supabase.com \
+            --build-arg DATABASE_NAME=postgres \
+            --build-arg DATABASE_PORT=5432 \
+            --build-arg DATABASE_SSL=false \
+            --build-arg DATABASE_USERNAME=postgres.zgnaauszrdmwvuulvnfo \
+            --build-arg FIREBASE_STORAGE_BUCKET=store-892ea.firebasestorage.app \
+            --build-arg GENERATE_SOURCEMAP=false \
+            --build-arg HOST=0.0.0.0 \
+            --build-arg PORT=1337 \
+            --build-arg SMTP_HOST=smtp.naver.com \
+            --build-arg SMTP_PORT=587 \
+            --build-arg SMTP_USERNAME=mm999999@naver.com \
+            --build-arg "URL=https://admin.culturemarketing.co.kr" \
+            --build-arg ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }} \
+            --build-arg API_TOKEN_SALT=${{ secrets.API_TOKEN_SALT }} \
+            --build-arg "APP_KEYS=${{ secrets.APP_KEYS }}" \
+            --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            --build-arg SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }} \
+            --build-arg TRANSFER_TOKEN_SALT=${{ secrets.TRANSFER_TOKEN_SALT }} \
+            --build-arg "FIREBASE_SERVICE_ACCOUNT=$(cat /tmp/firebase.json)" \
+            -t ghcr.io/bizlsw91/cm_c__strapi-gcp:latest .
 
       - name: Push Docker image
         run: docker push ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
