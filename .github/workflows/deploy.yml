@@ -60,7 +60,7 @@ jobs:
           host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.GCP_USERNAME }}
           key: ${{ secrets.GCP_SSH_KEY }}
-          command_timeout: 10m
+          command_timeout: 20m
           envs: DATABASE_PASSWORD,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT,GHCR_TOKEN
           script: |
             echo "$GHCR_TOKEN" | docker login ghcr.io -u bizlsw91 --password-stdin
@@ -90,4 +90,5 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+
 
