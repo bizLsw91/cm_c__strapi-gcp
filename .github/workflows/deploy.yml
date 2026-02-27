@@ -60,7 +60,10 @@ jobs:
           host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.GCP_USERNAME }}
           key: ${{ secrets.GCP_SSH_KEY }}
+          command_timeout: 10m
+          envs: DATABASE_PASSWORD,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT,GHCR_TOKEN
           script: |
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u bizlsw91 --password-stdin
             docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
             docker stop cmc-strapi || true
             docker rm cmc-strapi || true
@@ -68,4 +71,23 @@ jobs:
               --name cmc-strapi \
               --restart unless-stopped \
               -p 1337:1337 \
+              -e DATABASE_PASSWORD="$DATABASE_PASSWORD" \
+              -e JWT_SECRET="$JWT_SECRET" \
+              -e ADMIN_JWT_SECRET="$ADMIN_JWT_SECRET" \
+              -e APP_KEYS="$APP_KEYS" \
+              -e API_TOKEN_SALT="$API_TOKEN_SALT" \
+              -e TRANSFER_TOKEN_SALT="$TRANSFER_TOKEN_SALT" \
+              -e SMTP_PASSWORD="$SMTP_PASSWORD" \
+              -e FIREBASE_SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
+        env:
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          APP_KEYS: ${{ secrets.APP_KEYS }}
+          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
+          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+
