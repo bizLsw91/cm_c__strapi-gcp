@@ -38,6 +38,7 @@ jobs:
             --build-arg DATABASE_CLIENT=postgres \
             --build-arg DATABASE_HOST=aws-1-ap-northeast-2.pooler.supabase.com \
             --build-arg DATABASE_NAME=postgres \
+            --build-arg DATABASE_SCHEMA=cm_c__strapi_db \
             --build-arg DATABASE_PORT=5432 \
             --build-arg DATABASE_SSL=false \
             --build-arg DATABASE_USERNAME=postgres.zgnaauszrdmwvuulvnfo \
