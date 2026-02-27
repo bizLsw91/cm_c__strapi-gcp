@@ -1,0 +1,73 @@
+{
+  "kind": "collectionType",
+  "collectionName": "samples",
+  "info": {
+    "singularName": "sample",
+    "pluralName": "samples",
+    "displayName": "Sample",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "short_text": {
+      "type": "string"
+    },
+    "long_text": {
+      "type": "text"
+    },
+    "editor": {
+      "type": "customField",
+      "options": {
+        "preset": "defaultHtml"
+      },
+      "customField": "plugin::ckeditor5.CKEditor"
+    },
+    "number": {
+      "type": "integer"
+    },
+    "email": {
+      "type": "email"
+    },
+    "datetime": {
+      "type": "datetime"
+    },
+    "multi_media": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "single_media": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "select": {
+      "type": "enumeration",
+      "enum": [
+        "apple",
+        "banana",
+        "grape"
+      ]
+    },
+    "outline": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.outline"
+    }
+  }
+}

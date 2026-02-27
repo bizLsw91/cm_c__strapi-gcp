@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_shared_outlines",
+  "info": {
+    "displayName": "outline",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "dateText": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "organizer": {
+      "type": "string"
+    },
+    "topics": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.topics"
+    },
+    "target": {
+      "type": "text"
+    }
+  }
+}

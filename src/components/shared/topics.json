@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_shared_topics",
+  "info": {
+    "displayName": "topics",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "content": {
+      "type": "text"
+    }
+  }
+}

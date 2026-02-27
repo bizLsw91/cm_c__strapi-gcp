@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notices",
+  "info": {
+    "singularName": "notice",
+    "pluralName": "notices",
+    "displayName": "공지사항",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "pluginOptions": {},
+      "type": "string"
+    },
+    "ip": {
+      "pluginOptions": {},
+      "type": "string"
+    },
+    "view_cnt": {
+      "pluginOptions": {},
+      "type": "integer",
+      "default": 0
+    },
+    "content": {
+      "pluginOptions": {},
+      "type": "customField",
+      "options": {
+        "preset": "defaultHtml"
+      },
+      "customField": "plugin::ckeditor5.CKEditor"
+    },
+    "author": {
+      "pluginOptions": {},
+      "type": "string"
+    },
+    "category_ko": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::category.category"
+    }
+  }
+}

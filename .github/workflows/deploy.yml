@@ -1,0 +1,116 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    environment: production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.18.1'
+
+      - name: Create .env file
+        run: |
+          touch .env
+          echo "URL=${{ vars.URL }}" >> .env
+          echo "GENERATE_SOURCEMAP=${{ vars.GENERATE_SOURCEMAP }}" >> .env
+          echo "HOST=${{ vars.HOST }}" >> .env
+          echo "PORT=${{ vars.PORT }}" >> .env
+          echo "DATABASE_CLIENT=${{ vars.DATABASE_CLIENT }}" >> .env
+          echo "DATABASE_HOST=${{ vars.DATABASE_HOST }}" >> .env
+          echo "DATABASE_PORT=${{ vars.DATABASE_PORT }}" >> .env
+          echo "DATABASE_NAME=${{ vars.DATABASE_NAME }}" >> .env
+          echo "DATABASE_USERNAME=${{ vars.DATABASE_USERNAME }}" >> .env
+          echo "DATABASE_SSL=${{ vars.DATABASE_SSL }}" >> .env
+          echo "SMTP_HOST=${{ vars.SMTP_HOST }}" >> .env
+          echo "SMTP_PORT=${{ vars.SMTP_PORT }}" >> .env
+          echo "SMTP_USERNAME=${{ vars.SMTP_USERNAME }}" >> .env
+          echo "FIREBASE_STORAGE_BUCKET=${{ vars.FIREBASE_STORAGE_BUCKET }}" >> .env
+          echo "APP_KEYS=${{ secrets.APP_KEYS }}" >> .env
+          echo "API_TOKEN_SALT=${{ secrets.API_TOKEN_SALT }}" >> .env
+          echo "ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }}" >> .env
+          echo "TRANSFER_TOKEN_SALT=${{ secrets.TRANSFER_TOKEN_SALT }}" >> .env
+          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_1_3 }}${{ secrets.FIREBASE_SERVICE_ACCOUNT_2_3 }}${{ secrets.FIREBASE_SERVICE_ACCOUNT_3_3 }}" | base64 -d >> .env
+          cat .env
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Strapi admin
+        run: npm run build
+
+      - name: Prepare deploy package
+        run: |
+          mkdir deploy
+          cp -r src config dist public package*.json types .env deploy/
+          tar -czf deploy.tar.gz -C deploy .
+
+      - name: Get GitHub Action Runner Public IP
+        id: ip
+        uses: haythem/public-ip@v1.3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+
+      - name: Add GitHub Action IP to Security Group
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ vars.AWS_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32 || echo "The IP already exists in the security group"
+
+      - name: Upload build files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_PEM }}
+          source: "deploy.tar.gz"
+          target: "/home/ubuntu/CMCompany/cm_c__strapi-aws"
+
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_IP }}            # EC2 퍼블릭 IP를 Secret으로 관리
+          username: ubuntu                     # EC2 사용자 이름 (예: ubuntu)
+          key: ${{ secrets.EC2_PEM }}          # Secret에 저장된 프라이빗 키 참조
+          script: |
+            cd /home/ubuntu/CMCompany/cm_c__strapi-aws
+            pm2 save || true
+            pm2 stop all || true
+            rm -rf src config dist public node_modules package*.json types .env
+            tar -xzf deploy.tar.gz
+            rm deploy.tar.gz
+            npm install --omit=dev
+            npm install --platform=linux sharp
+            pm2 start server.js --name "cm_c__strapi-aws"
+
+      - name: Remove GitHub Action IP from Security Group
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ vars.AWS_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32 || echo "Failed to remove IP from security group."
+
+      - name: Rollback on failure (optional)
+        if: failure()
+        run: |
+          pm2 resurrect || echo "Rollback failed"

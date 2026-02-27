@@ -1,0 +1,25 @@
+{
+  "kind": "collectionType",
+  "collectionName": "category_ens",
+  "info": {
+    "singularName": "category-en",
+    "pluralName": "category-ens",
+    "displayName": "카테고리_영문",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "code": {
+      "type": "uid"
+    },
+    "description": {
+      "type": "text"
+    }
+  }
+}

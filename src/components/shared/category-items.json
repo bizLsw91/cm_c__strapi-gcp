@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_category_items",
+  "info": {
+    "displayName": "category_items"
+  },
+  "options": {},
+  "attributes": {
+    "item": {
+      "type": "string"
+    }
+  }
+}

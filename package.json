@@ -1,0 +1,52 @@
+{
+  "name": "cm-c-strapi",
+  "license": "GPL-2.0-or-later",
+  "version": "1.1.4",
+  "private": true,
+  "description": "A Strapi application",
+  "scripts": {
+    "build": "strapi build",
+    "deploy": "strapi deploy",
+    "dev": "strapi develop",
+    "seed:example": "node ./scripts/seed.js",
+    "start": "strapi start",
+    "strapi": "strapi"
+  },
+  "dependencies": {
+    "@_sh/strapi-plugin-ckeditor": "^5.0.1",
+    "@dev.w-strapi/sharp-lsw-provider-firebase-storage": "^1.0.6",
+    "@strapi/plugin-cloud": "5.9.0",
+    "@strapi/plugin-users-permissions": "5.9.0",
+    "@strapi/provider-email-nodemailer": "^5.9.0",
+    "@strapi/strapi": "5.9.0",
+    "fs-extra": "^10.0.0",
+    "knex": "^3.1.0",
+    "mime-types": "^2.1.27",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.9.8",
+    "nodemailer": "^6.10.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.27.3"
+  },
+  "resolutions": {
+    "rollup": "npm:@rollup/wasm-node"
+  },
+  "engines": {
+    "node": "20.18.1",
+    "npm": "11.1.0"
+  },
+  "strapi": {
+    "uuid": "6596d8c3-4d04-47b0-926f-013f9c382bcd"
+  }
+}

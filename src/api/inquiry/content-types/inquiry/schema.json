@@ -1,0 +1,78 @@
+{
+  "kind": "collectionType",
+  "collectionName": "inquiries",
+  "info": {
+    "singularName": "inquiry",
+    "pluralName": "inquiries",
+    "displayName": "문의사항",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "full_name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "string"
+    },
+    "contact": {
+      "type": "string"
+    },
+    "lang": {
+      "type": "enumeration",
+      "enum": [
+        "ko",
+        "en"
+      ],
+      "required": true
+    },
+    "event_name": {
+      "type": "string"
+    },
+    "host_organization": {
+      "type": "string",
+      "required": true
+    },
+    "period": {
+      "type": "string",
+      "required": true
+    },
+    "venue": {
+      "type": "string"
+    },
+    "expected_participants": {
+      "type": "integer"
+    },
+    "company_name": {
+      "type": "string"
+    },
+    "content": {
+      "type": "text",
+      "required": true
+    },
+    "budget": {
+      "type": "string"
+    },
+    "answer": {
+      "type": "customField",
+      "options": {
+        "preset": "defaultHtml"
+      },
+      "customField": "plugin::ckeditor5.CKEditor"
+    },
+    "inquiry_status": {
+      "type": "enumeration",
+      "enum": [
+        "n01.not-yet-read",
+        "n02.has-been-read",
+        "n03.answered"
+      ],
+      "default": "n01.not-yet-read",
+      "required": false
+    }
+  }
+}

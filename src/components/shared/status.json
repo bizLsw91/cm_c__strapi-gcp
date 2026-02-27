@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_shared_statuses",
+  "info": {
+    "displayName": "Status",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "status_name": {
+      "type": "string"
+    }
+  }
+}
