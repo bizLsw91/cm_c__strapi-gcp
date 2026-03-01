@@ -35,13 +35,12 @@ jobs:
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/firebase.json
           docker build \
-            --build-arg DATABASE_CLIENT=postgres \
-            --build-arg DATABASE_HOST=aws-0-us-west-2.pooler.supabase.com \
-            --build-arg DATABASE_NAME=postgres \
-            --build-arg DATABASE_SCHEMA=cm_c__strapi_db \
-            --build-arg DATABASE_PORT=5432 \
-            --build-arg DATABASE_SSL=false \
-            --build-arg DATABASE_USERNAME=postgres.onfhgckcjtsrknuvgfqm \
+            --build-arg DATABASE_CLIENT=mysql \
+            --build-arg DATABASE_HOST=mysql-strapi-cmc-strapi.a.aivencloud.com \
+            --build-arg DATABASE_NAME=cm_c__strapi_db \
+            --build-arg DATABASE_PORT=24267 \
+            --build-arg DATABASE_SSL=true \
+            --build-arg DATABASE_USERNAME=avnadmin \
             --build-arg FIREBASE_STORAGE_BUCKET=store-892ea.firebasestorage.app \
             --build-arg GENERATE_SOURCEMAP=false \
             --build-arg HOST=0.0.0.0 \
@@ -80,6 +79,7 @@ jobs:
               --name cmc-strapi \
               --restart unless-stopped \
               -p 1337:1337 \
+              -v /etc/ssl/aiven/ca.pem:/etc/ssl/aiven/ca.pem \
               -e DATABASE_PASSWORD="$DATABASE_PASSWORD" \
               -e JWT_SECRET="$JWT_SECRET" \
               -e ADMIN_JWT_SECRET="$ADMIN_JWT_SECRET" \
