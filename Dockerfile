@@ -48,7 +48,7 @@ ARG FIREBASE_SERVICE_ACCOUNT
 
 # npm run build 전에 인증서 파일 생성
 RUN mkdir -p /etc/ssl/aiven && \
-    echo "$DATABASE_SSL_CA_CONTENT" > /etc/ssl/aiven/ca.pem
+    echo "$DATABASE_SSL_CA_CONTENT" | base64 -d > /etc/ssl/aiven/ca.pem
 
 COPY package*.json ./
 RUN npm ci --only=production
