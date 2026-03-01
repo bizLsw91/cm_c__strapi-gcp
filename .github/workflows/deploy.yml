@@ -53,6 +53,7 @@ jobs:
             --build-arg API_TOKEN_SALT=${{ secrets.API_TOKEN_SALT }} \
             --build-arg "APP_KEYS=${{ secrets.APP_KEYS }}" \
             --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --build-arg DATABASE_SSL_CA_CONTENT=${{ secrets.DATABASE_SSL_CA_CONTENT }} \
             --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
             --build-arg SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }} \
             --build-arg TRANSFER_TOKEN_SALT=${{ secrets.TRANSFER_TOKEN_SALT }} \
@@ -69,7 +70,7 @@ jobs:
           username: ${{ secrets.GCP_USERNAME }}
           key: ${{ secrets.GCP_SSH_KEY }}
           command_timeout: 20m
-          envs: DATABASE_PASSWORD,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT,GHCR_TOKEN
+          envs: DATABASE_PASSWORD,DATABASE_SSL_CA_CONTENT,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT,GHCR_TOKEN
           script: |
             echo "$GHCR_TOKEN" | docker login ghcr.io -u bizlsw91 --password-stdin
             docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
@@ -91,6 +92,7 @@ jobs:
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
         env:
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_SSL_CA_CONTENT: ${{ secrets.DATABASE_SSL_CA_CONTENT }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
           APP_KEYS: ${{ secrets.APP_KEYS }}
