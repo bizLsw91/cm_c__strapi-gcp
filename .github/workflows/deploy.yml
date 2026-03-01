@@ -32,6 +32,14 @@ jobs:
       - name: Build Docker image
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DATABASE_SSL_CA_CONTENT: ${{ secrets.DATABASE_SSL_CA_CONTENT }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
+          APP_KEYS: ${{ secrets.APP_KEYS }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
         run: |
           echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/firebase.json
           docker build \
@@ -49,14 +57,14 @@ jobs:
             --build-arg SMTP_PORT=587 \
             --build-arg SMTP_USERNAME=mm999999@naver.com \
             --build-arg "URL=http://136.109.215.204:1337" \
-            --build-arg ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }} \
-            --build-arg API_TOKEN_SALT=${{ secrets.API_TOKEN_SALT }} \
-            --build-arg "APP_KEYS=${{ secrets.APP_KEYS }}" \
-            --build-arg DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
-            --build-arg DATABASE_SSL_CA_CONTENT=${{ secrets.DATABASE_SSL_CA_CONTENT }} \
-            --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            --build-arg SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }} \
-            --build-arg TRANSFER_TOKEN_SALT=${{ secrets.TRANSFER_TOKEN_SALT }} \
+            --build-arg "ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET" \
+            --build-arg "API_TOKEN_SALT=$API_TOKEN_SA LT" \
+            --build-arg "APP_KEYS=$APP_KEYS" \
+            --build-arg "DATABASE_PASSWORD=$DATABASE_PASSWORD" \
+            --build-arg "DATABASE_SSL_CA_CONTENT=$DATABASE_SSL_CA_CONTENT" \
+            --build-arg "JWT_SECRET=$JWT_SECRET" \
+            --build-arg "SMTP_PASSWORD=$SMTP_PASSWORD" \
+            --build-arg "TRANSFER_TOKEN_SALT=$TRANSFER_TOKEN_SALT" \
             --build-arg "FIREBASE_SERVICE_ACCOUNT=$(cat /tmp/firebase.json)" \
             -t ghcr.io/bizlsw91/cm_c__strapi-gcp:latest .
 
