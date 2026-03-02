@@ -590,7 +590,7 @@ export interface ApiInquiryInquiry extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     email: Schema.Attribute.String;
-    event_name: Schema.Attribute.String;
+    event_name: Schema.Attribute.String & Schema.Attribute.Required;
     expected_participants: Schema.Attribute.Integer;
     full_name: Schema.Attribute.String & Schema.Attribute.Required;
     host_organization: Schema.Attribute.String & Schema.Attribute.Required;

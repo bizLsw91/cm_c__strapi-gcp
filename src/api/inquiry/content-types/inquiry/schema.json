@@ -31,7 +31,8 @@
       "required": true
     },
     "event_name": {
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "host_organization": {
       "type": "string",
