@@ -154,53 +154,127 @@ export default {
             return null;
         };
 
-        const applyHomeLayout = (): boolean => {
-            let done = 0;
-
-            // 1. "3 steps to get started" → 3단계 상위 숨기기
-            const tour = findAncestor('3 steps to get started', 3);
-            if (tour) { tour.style.display = 'none'; done++; }
-
-            // 2. "Last published entries" → 3단계 상위 숨기기 (대소문자 무시)
-            const published = findAncestor('last published entries', 3);
-            if (published) { published.style.display = 'none'; done++; }
-
-            // 3. "Last edited entries" → 5단계 상위 display:block + 텍스트 교체
-            const editedEl = findAncestor('last edited entries', 1);
-            if (editedEl) {
-                editedEl.textContent = '최근 편집항목';
-                const sectionContainer = findAncestor('최근 편집항목', 5);
-                if (sectionContainer) {
-                    sectionContainer.style.display = 'block';
-                    // '최근 편집항목' 기준 2단계 상위 컨테이너의 하위 테이블 첫 열 span에 max-width 적용
-                    const tableContainer = findAncestor('최근 편집항목', 2);
-                    tableContainer
-                        ?.querySelectorAll('table td:first-child span')
-                        .forEach((span) => {
-                            (span as HTMLElement).style.maxWidth = '40rem';
-                        });
-                }
-                done++;
-            }
-
-            return done === 3;
-        };
+        // ─── 각 작업 완료 여부를 독립적으로 추적 ─────────────────────
+        let task1Done = false; // 작업1: 3 steps 패널 숨기기
+        let task2Done = false; // 작업2: Last published entries 패널 숨기기
+        let task3Done = false; // 작업3: editedEl 4번째 상위 부모 display:block
+        let task4Done = false; // 작업4: Last edited entries 테이블 첫 열 넓히기
 
         const showContent = () => getContentArea()?.classList.add('layout-ready');
         const hideContent = () => getContentArea()?.classList.remove('layout-ready');
 
+        // ─── 안전장치: 최대 1초 후 무조건 showContent ─────────────────
+        let showContentTimer: ReturnType<typeof setTimeout> | null = null;
+        const scheduleForceShow = () => {
+            if (showContentTimer) clearTimeout(showContentTimer);
+            showContentTimer = setTimeout(showContent, 1000);
+        };
 
-        let homeAttempts = 0;
-        const tryApplyHomeLayout = () => {
-            if (applyHomeLayout()) {
-                showContent();
-            } else if (homeAttempts < 30) {
-                homeAttempts++;
-                setTimeout(tryApplyHomeLayout, 300);
+        // ─── 작업1, 2: 패널 숨기기 ────────────────────────────────────
+        let layoutAttempts = 0;
+        const applyPanelHide = () => {
+            if (!task1Done) {
+                const tour = findAncestor('3 steps to get started', 3);
+                if (tour) { tour.style.display = 'none'; task1Done = true; }
+            }
+            if (!task2Done) {
+                const published = findAncestor('last published entries', 3);
+                if (published) { published.style.display = 'none'; task2Done = true; }
+            }
+
+            if (task1Done && task2Done) {
+                showContent(); // 둘 다 완료 → 즉시 표시
+                if (showContentTimer) clearTimeout(showContentTimer);
+                return;
+            }
+            if (layoutAttempts < 40) {
+                layoutAttempts++;
+                setTimeout(applyPanelHide, 100);
             } else {
-                showContent(); // 타임아웃 시 강제 표시(무한 숨김 방지)
+                showContent();
             }
         };
+
+        // ─── 작업3: editedEl 4번째 상위 부모 display:block ────────────
+        let task3Attempts = 0;
+        const applyDisplayBlock = () => {
+            if (task3Done) return;
+
+            const editedEl = findAncestor('last edited entries', 1);
+            if (editedEl) {
+                // editedEl 텍스트 교체
+                editedEl.textContent = '최근 편집항목';
+
+                // editedEl 기준 4단계 상위 → display:block
+                let ancestor: HTMLElement | null = editedEl;
+                for (let i = 0; i < 4 && ancestor; i++) {
+                    ancestor = ancestor.parentElement;
+                }
+                if (ancestor) {
+                    ancestor.style.display = 'block';
+                    task3Done = true;
+                    return;
+                }
+            }
+
+            if (task3Attempts < 40) {
+                task3Attempts++;
+                setTimeout(applyDisplayBlock, 200);
+            }
+        };
+
+        // ─── 작업4: 테이블 첫 열 span 넓히기 (독립 루프) ─────────────
+        let tableAttempts = 0;
+        const applyTableWidth = () => {
+            if (task4Done) return;
+
+            const editedEl = findAncestor('최근 편집항목', 1)
+                ?? findAncestor('last edited entries', 1);
+            if (editedEl) {
+                // editedEl의 부모의 부모의 2번째 자식에서 table 탐색
+                const grandParent = editedEl.parentElement?.parentElement;
+                const tableSection = grandParent?.children[1] as HTMLElement | undefined;
+                const table = tableSection?.querySelector('table');
+                if (table) {
+                    table.querySelectorAll('td:first-child span').forEach((span) => {
+                        (span as HTMLElement).style.maxWidth = '40rem';
+                        (span as HTMLElement).style.minWidth = '40rem';
+                        (span as HTMLElement).style.width = '40rem';
+                        (span as HTMLElement).style.display = 'inline-block';
+                    });
+                    task4Done = true;
+                    return;
+                }
+            }
+
+            if (tableAttempts < 40) {
+                tableAttempts++;
+                setTimeout(applyTableWidth, 300);
+            }
+        };
+
+        const tryApplyHomeLayout = () => {
+            layoutAttempts = 0;
+            task3Attempts = 0;
+            tableAttempts = 0;
+            scheduleForceShow(); // 1초 안전장치 시작
+            applyPanelHide();
+            applyDisplayBlock();
+            applyTableWidth();
+        };
+
+        // ─── MutationObserver: DOM 변화 시 즉시 재시도 ────────────────
+        let mutationThrottle: ReturnType<typeof setTimeout> | null = null;
+        const domObserver = new MutationObserver(() => {
+            if (!task1Done || !task2Done) {
+                if (mutationThrottle) return;
+                mutationThrottle = setTimeout(() => {
+                    mutationThrottle = null;
+                    applyPanelHide();
+                }, 50);
+            }
+        });
+        domObserver.observe(document.body, { childList: true, subtree: true });
 
         // ─── SPA 라우팅 대응: 대시보드 홈 재진입 시 재실행 ────────────
         const isDashboardHome = (path: string) =>
@@ -209,8 +283,11 @@ export default {
         const onNavigate = () => {
             if (isDashboardHome(window.location.pathname)) {
                 hideContent();
-                homeAttempts = 0;
-                setTimeout(tryApplyHomeLayout, 500);
+                task1Done = false;
+                task2Done = false;
+                task3Done = false;
+                task4Done = false;
+                setTimeout(tryApplyHomeLayout, 100);
             }
         };
 
@@ -221,7 +298,7 @@ export default {
         };
         window.addEventListener('popstate', onNavigate);
 
-        setTimeout(tryApplyHomeLayout, 500);
+        setTimeout(tryApplyHomeLayout, 50);
 
     },
 };
