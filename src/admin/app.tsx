@@ -101,6 +101,8 @@ export default {
         });
     },
     bootstrap(app: StrapiApp) {
+        console.log('[app.tsx] bootstrap 실행됨. URL:', window.location.pathname);
+
         // ─── 날짜 형식 자동 변환 ────────────────────────────────────
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -178,11 +180,11 @@ export default {
         const applyPanelHide = () => {
             if (!task1Done) {
                 const tour = findAncestor('3 steps to get started', 3);
-                if (tour) { tour.style.display = 'none'; task1Done = true; }
+                if (tour) { tour.style.display = 'none'; task1Done = true; console.log('[app.tsx] 작업1 완료'); }
             }
             if (!task2Done) {
                 const published = findAncestor('last published entries', 3);
-                if (published) { published.style.display = 'none'; task2Done = true; }
+                if (published) { published.style.display = 'none'; task2Done = true; console.log('[app.tsx] 작업2 완료'); }
             }
 
             if (task1Done && task2Done) {
@@ -216,6 +218,7 @@ export default {
                 if (ancestor) {
                     ancestor.style.display = 'block';
                     task3Done = true;
+                    console.log('[app.tsx] 작업3 완료');
                     return;
                 }
             }
@@ -246,6 +249,7 @@ export default {
                         (span as HTMLElement).style.display = 'inline-block';
                     });
                     task4Done = true;
+                    console.log('[app.tsx] 작업4 완료');
                     return;
                 }
             }
