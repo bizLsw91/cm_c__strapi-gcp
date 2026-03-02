@@ -7,26 +7,39 @@ import { setPluginConfig, defaultHtmlPreset, defaultMarkdownPreset } from '@_sh/
  */
 const reformatDate = (text: string): string | null => {
     const trimmed = text.trim();
-    const match = trimmed.match(
+
+    // ── 영어 형식: "Monday, January 12, 2026 at 6:08 PM" ──────────
+    const enMatch = trimmed.match(
         /^[A-Za-z]+,\s+([A-Za-z]+ \d{1,2}, \d{4})\s+at\s+(\d{1,2}:\d{2}\s+[AP]M)$/
     );
-    if (!match) return null;
-
-    try {
-        const parsed = new Date(`${match[1]} ${match[2]}`);
-        if (isNaN(parsed.getTime())) return null;
-
-        const y = parsed.getFullYear();
-        const mo = String(parsed.getMonth() + 1).padStart(2, '0');
-        const d = String(parsed.getDate()).padStart(2, '0');
-        const h = String(parsed.getHours()).padStart(2, '0');
-        const mi = String(parsed.getMinutes()).padStart(2, '0');
-
-        return `${y}-${mo}-${d} ${h}:${mi}`;
-    } catch {
-        return null;
+    if (enMatch) {
+        try {
+            const parsed = new Date(`${enMatch[1]} ${enMatch[2]}`);
+            if (isNaN(parsed.getTime())) return null;
+            const y = parsed.getFullYear();
+            const mo = String(parsed.getMonth() + 1).padStart(2, '0');
+            const d = String(parsed.getDate()).padStart(2, '0');
+            const h = String(parsed.getHours()).padStart(2, '0');
+            const mi = String(parsed.getMinutes()).padStart(2, '0');
+            return `${y}-${mo}-${d} ${h}:${mi}`;
+        } catch { return null; }
     }
+
+    // ── 한국어 형식: "2026년 1월 12일 월요일 오전/오후 6:08" ────────
+    const koMatch = trimmed.match(
+        /^(\d{4})년\s+(\d{1,2})월\s+(\d{1,2})일.*?(오전|오후)\s+(\d{1,2}):(\d{2})$/
+    );
+    if (koMatch) {
+        const [, year, month, day, ampm, hourStr, minute] = koMatch;
+        let h = parseInt(hourStr, 10);
+        if (ampm === '오후' && h !== 12) h += 12;
+        if (ampm === '오전' && h === 12) h = 0;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${String(h).padStart(2, '0')}:${minute}`;
+    }
+
+    return null;
 };
+
 
 // 홈 대시보드 고정 텍스트 한글 치환 맵
 const TEXT_REPLACEMENTS: Record<string, string> = {
@@ -101,29 +114,36 @@ export default {
             subtree: true,
         });
 
-        // ─── CSS injection: span max-width 확장 ──────────────────────
+        // ─── FOUC 방지: 콘텐츠 영역 즉시 숨김 ──────────────────────────
         const style = document.createElement('style');
         style.textContent = `
-            /* 테이블 첫 번째 열 span max-width 확장 */
-            main[aria-labelledby="main-content-title"] > :nth-child(2) > :nth-child(1) > :nth-child(2) table td:first-child span {
-                max-width: 40rem !important;
+            main[aria-labelledby="main-content-title"] > :nth-child(2) { opacity: 0; }
+            main[aria-labelledby="main-content-title"] > :nth-child(2).layout-ready {
+                opacity: 1;
+                transition: opacity 0.15s ease;
             }
         `;
         document.head.appendChild(style);
 
+        const getContentArea = () =>
+            document.querySelector(
+                'main[aria-labelledby="main-content-title"] > :nth-child(2)'
+            ) as HTMLElement | null;
+
         // ─── 홈 페이지 DOM 조작 헬퍼 ─────────────────────────────────
-        // 텍스트로 요소를 찾아 N단계 상위 조상의 스타일을 변경
+        // 텍스트로 요소를 찾아 N단계 상위 조상의 스타일을 변경 (대소문자 무시)
         const findAncestor = (
             searchText: string,
             levels: number,
         ): HTMLElement | null => {
+            const keyword = searchText.toLowerCase();
             const walker = document.createTreeWalker(
                 document.body,
                 NodeFilter.SHOW_TEXT,
             );
             let node: Text | null;
             while ((node = walker.nextNode() as Text | null)) {
-                if (node.textContent?.trim() === searchText) {
+                if (node.textContent?.trim().toLowerCase() === keyword) {
                     let el: HTMLElement | null = node.parentElement;
                     for (let i = 1; i < levels && el; i++) {
                         el = el.parentElement;
@@ -141,29 +161,66 @@ export default {
             const tour = findAncestor('3 steps to get started', 3);
             if (tour) { tour.style.display = 'none'; done++; }
 
-            // 2. "Last published entries" → 3단계 상위 숨기기
-            const published = findAncestor('Last published entries', 3);
+            // 2. "Last published entries" → 3단계 상위 숨기기 (대소문자 무시)
+            const published = findAncestor('last published entries', 3);
             if (published) { published.style.display = 'none'; done++; }
 
-            // 3. "Last edited entries" → 4단계 상위 display:block + 텍스트 교체
-            const editedEl = findAncestor('Last edited entries', 1);
+            // 3. "Last edited entries" → 5단계 상위 display:block + 텍스트 교체
+            const editedEl = findAncestor('last edited entries', 1);
             if (editedEl) {
                 editedEl.textContent = '최근 편집항목';
-                const ancestor = findAncestor('최근 편집항목', 5);
-                if (ancestor) { ancestor.style.display = 'block'; }
+                const sectionContainer = findAncestor('최근 편집항목', 5);
+                if (sectionContainer) {
+                    sectionContainer.style.display = 'block';
+                    // '최근 편집항목' 기준 2단계 상위 컨테이너의 하위 테이블 첫 열 span에 max-width 적용
+                    const tableContainer = findAncestor('최근 편집항목', 2);
+                    tableContainer
+                        ?.querySelectorAll('table td:first-child span')
+                        .forEach((span) => {
+                            (span as HTMLElement).style.maxWidth = '40rem';
+                        });
+                }
                 done++;
             }
 
             return done === 3;
         };
 
+        const showContent = () => getContentArea()?.classList.add('layout-ready');
+        const hideContent = () => getContentArea()?.classList.remove('layout-ready');
+
+
         let homeAttempts = 0;
         const tryApplyHomeLayout = () => {
-            if (!applyHomeLayout() && homeAttempts < 30) {
+            if (applyHomeLayout()) {
+                showContent();
+            } else if (homeAttempts < 30) {
                 homeAttempts++;
                 setTimeout(tryApplyHomeLayout, 300);
+            } else {
+                showContent(); // 타임아웃 시 강제 표시(무한 숨김 방지)
             }
         };
+
+        // ─── SPA 라우팅 대응: 대시보드 홈 재진입 시 재실행 ────────────
+        const isDashboardHome = (path: string) =>
+            /\/dashboard\/?$/.test(path);
+
+        const onNavigate = () => {
+            if (isDashboardHome(window.location.pathname)) {
+                hideContent();
+                homeAttempts = 0;
+                setTimeout(tryApplyHomeLayout, 500);
+            }
+        };
+
+        const origPushState = history.pushState.bind(history);
+        history.pushState = (...args) => {
+            origPushState(...args);
+            onNavigate();
+        };
+        window.addEventListener('popstate', onNavigate);
+
         setTimeout(tryApplyHomeLayout, 500);
 
     },
