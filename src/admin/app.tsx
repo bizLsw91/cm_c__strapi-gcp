@@ -1,5 +1,4 @@
 import type { StrapiApp } from '@strapi/strapi/admin';
-import { setPluginConfig, defaultHtmlPreset, defaultMarkdownPreset } from '@_sh/strapi-plugin-ckeditor';
 
 /**
  * 날짜 문자열을 "yyyy-mm-dd HH:mm" 형식으로 변환
@@ -76,25 +75,29 @@ export default {
     },
     register() {
         // CKEditor 툴바 툴팁 한글화
-        // 공식 문서: setPluginConfig는 bootstrap 이전(register)에서 호출해야 함
-        const koLanguage = { ui: 'ko', content: 'en' };
-        setPluginConfig({
-            presets: [
-                {
-                    ...defaultHtmlPreset,
-                    editorConfig: {
-                        ...defaultHtmlPreset.editorConfig,
-                        language: koLanguage,
+        // dynamic import: 실패해도 나머지 app.tsx 코드에 영향 없음
+        import('@_sh/strapi-plugin-ckeditor').then(({ setPluginConfig, defaultHtmlPreset, defaultMarkdownPreset }) => {
+            const koLanguage = { ui: 'ko', content: 'en' };
+            setPluginConfig({
+                presets: [
+                    {
+                        ...defaultHtmlPreset,
+                        editorConfig: {
+                            ...defaultHtmlPreset.editorConfig,
+                            language: koLanguage,
+                        },
                     },
-                },
-                {
-                    ...defaultMarkdownPreset,
-                    editorConfig: {
-                        ...defaultMarkdownPreset.editorConfig,
-                        language: koLanguage,
+                    {
+                        ...defaultMarkdownPreset,
+                        editorConfig: {
+                            ...defaultMarkdownPreset.editorConfig,
+                            language: koLanguage,
+                        },
                     },
-                },
-            ],
+                ],
+            });
+        }).catch((e) => {
+            console.warn('[app.tsx] CKEditor 플러그인 설정 실패 (무시됨):', e);
         });
     },
     bootstrap(app: StrapiApp) {
