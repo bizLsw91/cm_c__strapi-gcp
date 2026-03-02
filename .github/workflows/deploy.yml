@@ -56,7 +56,7 @@ jobs:
             --build-arg SMTP_HOST=smtp.naver.com \
             --build-arg SMTP_PORT=587 \
             --build-arg SMTP_USERNAME=mm999999@naver.com \
-            --build-arg "URL=http://136.109.215.204:1337" \
+            --build-arg "URL=https://admin.culturemarketing.co.kr" \
             --build-arg "ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET" \
             --build-arg "API_TOKEN_SALT=$API_TOKEN_SA LT" \
             --build-arg "APP_KEYS=$APP_KEYS" \
