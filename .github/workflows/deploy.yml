@@ -58,7 +58,7 @@ jobs:
             --build-arg SMTP_USERNAME=mm999999@naver.com \
             --build-arg "URL=https://admin.culturemarketing.co.kr" \
             --build-arg "ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET" \
-            --build-arg "API_TOKEN_SALT=$API_TOKEN_SA LT" \
+            --build-arg "API_TOKEN_SALT=$API_TOKEN_SALT" \
             --build-arg "APP_KEYS=$APP_KEYS" \
             --build-arg "DATABASE_PASSWORD=$DATABASE_PASSWORD" \
             --build-arg "DATABASE_SSL_CA_CONTENT=$DATABASE_SSL_CA_CONTENT" \
@@ -97,6 +97,7 @@ jobs:
               -e TRANSFER_TOKEN_SALT="$TRANSFER_TOKEN_SALT" \
               -e SMTP_PASSWORD="$SMTP_PASSWORD" \
               -e FIREBASE_SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT" \
+              -e URL="https://admin.culturemarketing.co.kr" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
         env:
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
