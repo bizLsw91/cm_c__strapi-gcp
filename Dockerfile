@@ -51,11 +51,13 @@ RUN mkdir -p /etc/ssl/aiven && \
     echo "$DATABASE_SSL_CA_CONTENT" | base64 -d > /etc/ssl/aiven/ca.pem
 
 COPY package*.json ./
-RUN npm ci --only=production
+
+# ── 1단계: devDependencies 포함 전체 설치 (app.tsx 커스텀 코드 빌드에 필요)
+RUN npm ci
 
 COPY . .
 
-# 민감 변수는 빌드 시에만 임시 주입
+# ── 2단계: strapi build (app.tsx 커스텀 코드 포함)
 RUN DATABASE_PASSWORD=$DATABASE_PASSWORD \
     DATABASE_SSL_CA_CONTENT=$DATABASE_SSL_CA_CONTENT \
     JWT_SECRET=$JWT_SECRET \
@@ -66,6 +68,9 @@ RUN DATABASE_PASSWORD=$DATABASE_PASSWORD \
     SMTP_PASSWORD=$SMTP_PASSWORD \
     FIREBASE_SERVICE_ACCOUNT=$FIREBASE_SERVICE_ACCOUNT \
     npm run build
+
+# ── 3단계: production 전용 node_modules로 교체 (이미지 경량화)
+RUN npm ci --only=production
 
 EXPOSE 1337
 CMD ["npm", "run", "start"]
