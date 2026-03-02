@@ -27,15 +27,16 @@
 
 ## 💻 컴퓨팅 자원 (서버)
 
-| 항목              | 내용                     |
-|-----------------|------------------------|
-| 인스턴스 유형         | `e2-micro`             |
-| vCPU            | `0.25vCpu (공유) 2 Core` |
-| 메모리 (RAM)       | `1 GB`                 |
-| 스토리지            | `20 GB 표준디스크`          |
-| OS              | `Ubuntu 22.04 LTS`     |
-| 프로세스 매니저  | `Docker`               |
-| Swap            | `2GB`                  |
+| 항목              | 내용                       |
+|-----------------|--------------------------|
+| 인스턴스 유형         | `e2-micro`               |
+| vCPU            | `0.25vCpu (공유) 2 Core`   |
+| 메모리 (RAM)       | `1 GB`                   |
+| 스토리지            | `20 GB 표준디스크`            |
+| OS              | `Ubuntu 22.04 LTS`       |
+| 프로세스 매니저  | `Docker`                 |
+| Swap            | `2GB`                    |
+| 마이그레이션      | `AWS EC2 -> GCP Compute` |
 
 ---
 
@@ -43,18 +44,18 @@
 
 | 항목       | 내용                                     |
 |----------|----------------------------------------|
-| DB 서비스   | `Supabase 무료티어`                        |
-| DB 종류    | `PostgreSQL`                           |
-| DB 버전    | `17.6.1.063`                           |
+| DB 서비스   | `Aiven 무료티어`                           |
+| DB 종류    | `Mysql`                                |
+| DB 버전    | `8.0.45`                               |
 | DB Method | `Session pooler`                       |
-| 호스팅 위치   | `AWS`                                  |
-| 리전       | `ap-northeast-2 (서울)`                  |
-| DB 인스턴스  | `t4g.nano`                             |
-| 메모리      | `0.5 GB`                               |
-| 스토리지     | `8 GB`                                 |
-| 백업 주기    | `없음`                                   |
-| 마이그레이션   | `AWS RDS: mysql -> Supabase: postgres` |
-| --참고     | `DB-Migration-Guide(결론적).md` |
+| 호스팅 위치   | `digital ocean`                        |
+| 리전       | `United States, California`            |
+| DB 인스턴스  | `Free-1-1gb`                           |
+| 메모리      | `1 GB`                                 |
+| 스토리지     | `1 GB`                                 |
+| 백업 주기    | `1일`                                   |
+| 마이그레이션   | `AWS RDS: mysql -> Aiven: mysql` |
+| --참고     | `DB-Migration-Guide(결론적).md`           |
 
 ---
 

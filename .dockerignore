@@ -4,3 +4,6 @@ node_modules
 *.log
 .env*
 README.md
+.cache
+.tmp
+build
