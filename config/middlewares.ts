@@ -33,7 +33,7 @@ export default [
   {
     name: 'strapi::cors',
     config: {
-      origin: ['https://www.culturemarketing.co.kr', 'https://culturemarketing.co.kr','http://localhost:8598','http://127.0.0.1:8598', 'https://cmc-renewal.vercel.app', 'https://storage.googleapis.com', 'https://www.google.com','firebasestorage.googleapis.com'],
+      origin: ['https://cmc-cloudflare.pages.dev','https://www.culturemarketing.co.kr', 'https://culturemarketing.co.kr','http://localhost:8598','http://127.0.0.1:8598', 'https://cmc-renewal.vercel.app', 'https://storage.googleapis.com', 'https://www.google.com','firebasestorage.googleapis.com'],
       credentials: true  // ✅ 쿠키 전송 허용
     },
   },
