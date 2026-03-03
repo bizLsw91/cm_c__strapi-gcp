@@ -77,14 +77,17 @@ jobs:
           host: ${{ secrets.GCP_HOST }}
           username: ${{ secrets.GCP_USERNAME }}
           key: ${{ secrets.GCP_SSH_KEY }}
+          port: ${{ secrets.GCP_PORT || 22 }}
           command_timeout: 20m
+          script_stop: true
+          debug: true
           envs: DATABASE_PASSWORD,DATABASE_SSL_CA_CONTENT,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT,GHCR_TOKEN
           script: |
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u bizlsw91 --password-stdin
-            docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
-            docker stop cmc-strapi || true
-            docker rm cmc-strapi || true
-            docker run -d \
+            echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u bizlsw91 --password-stdin
+            sudo docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
+            sudo docker stop cmc-strapi || true
+            sudo docker rm cmc-strapi || true
+            sudo docker run -d \
               --name cmc-strapi \
               --restart unless-stopped \
               -p 1337:1337 \
@@ -99,7 +102,7 @@ jobs:
               -e FIREBASE_SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT" \
               -e URL="https://admin.culturemarketing.co.kr" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
-            docker image prune -f
+            sudo docker image prune -f
         env:
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           DATABASE_SSL_CA_CONTENT: ${{ secrets.DATABASE_SSL_CA_CONTENT }}
