@@ -71,18 +71,18 @@ const processNode = (node: Element) => {
 
 export default {
     config: {
-        locales: ['ko']
-    },
-    translations: {
-        ko: {
-            // ── 플러그인 이름 번역 (콘솔 에러 제거) ──
-            'content-manager.plugin.name': '콘텐츠 관리자',
-            'cloud.plugin.name': '배포',
-            // ── 필요시 추가 키 ──
-            'upload.plugin.name': '미디어 라이브러리',
-            'i18n.plugin.name': '다국어',
-            'content-type-builder.plugin.name': '콘텐츠 타입 빌더',
-            'users-permissions.plugin.name': '사용자 & 권한',
+        locales: ['ko'],
+        translations: {
+            ko: {
+                // ── 플러그인 이름 번역 (콘솔 에러 제거) ──
+                'content-manager.plugin.name': '콘텐츠 관리자',
+                'cloud.plugin.name': '배포',
+                // ── 필요시 추가 키 ──
+                'upload.plugin.name': '미디어 라이브러리',
+                'i18n.plugin.name': '다국어',
+                'content-type-builder.plugin.name': '콘텐츠 타입 빌더',
+                'users-permissions.plugin.name': '사용자 & 권한',
+            },
         },
     },
     register() {
