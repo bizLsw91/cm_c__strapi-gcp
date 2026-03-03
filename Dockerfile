@@ -52,12 +52,12 @@ RUN mkdir -p /etc/ssl/aiven && \
 
 COPY package*.json ./
 
-# ── 1단계: devDependencies 포함 전체 설치 (app.tsx 커스텀 코드 빌드에 필요)
+# ── 1단계: devDependencies 포함 전체 설치 (app.ts 커스텀 코드 빌드에 필요)
 RUN npm ci
 
 COPY . .
 
-# ── 2단계: strapi build (app.tsx 커스텀 코드 포함)
+# ── 2단계: strapi build (app.ts 커스텀 코드 포함)
 RUN rm -rf .cache && \
     DATABASE_PASSWORD=$DATABASE_PASSWORD \
     DATABASE_SSL_CA_CONTENT=$DATABASE_SSL_CA_CONTENT \
