@@ -531,6 +531,32 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiDocDoc extends Struct.SingleTypeSchema {
+  collectionName: 'docs';
+  info: {
+    description: '';
+    displayName: '\uBB38\uC11C';
+    pluralName: 'docs';
+    singularName: 'doc';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::doc.doc'> &
+      Schema.Attribute.Private;
+    PDF: Schema.Attribute.Media<'files'> & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiGlobalGlobal extends Struct.SingleTypeSchema {
   collectionName: 'globals';
   info: {
@@ -1405,6 +1431,7 @@ declare module '@strapi/strapi' {
       'api::author.author': ApiAuthorAuthor;
       'api::category-en.category-en': ApiCategoryEnCategoryEn;
       'api::category.category': ApiCategoryCategory;
+      'api::doc.doc': ApiDocDoc;
       'api::global.global': ApiGlobalGlobal;
       'api::inquiry.inquiry': ApiInquiryInquiry;
       'api::notice-en.notice-en': ApiNoticeEnNoticeEn;

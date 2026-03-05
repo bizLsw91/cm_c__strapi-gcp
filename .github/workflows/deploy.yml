@@ -49,7 +49,7 @@ jobs:
             --build-arg DATABASE_PORT=24267 \
             --build-arg DATABASE_SSL=true \
             --build-arg DATABASE_USERNAME=avnadmin \
-            --build-arg FIREBASE_STORAGE_BUCKET=store-892ea.firebasestorage.app \
+            --build-arg FIREBASE_STORAGE_BUCKET=store-892ea-firebasestorage-app-dev \
             --build-arg GENERATE_SOURCEMAP=false \
             --build-arg HOST=0.0.0.0 \
             --build-arg PORT=1337 \

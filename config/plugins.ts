@@ -1,3 +1,5 @@
+import path from 'path';
+
 export default ({ env }) => ({
     // ...
     'users-permissions': {
@@ -37,7 +39,7 @@ export default ({ env }) => ({
     },
     upload: {
         config: {
-            provider: '@dev.w-strapi/sharp-lsw-provider-firebase-storage',
+            provider: path.resolve(__dirname, '../src/providers/upload-firebase-custom'),
             providerOptions: {
                 serviceAccount: JSON.parse(env('FIREBASE_SERVICE_ACCOUNT')), // Firebase 서비스 계정
                 bucket: env('FIREBASE_STORAGE_BUCKET'),
