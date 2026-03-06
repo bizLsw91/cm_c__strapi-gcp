@@ -98,7 +98,16 @@ jobs:
               -e FIREBASE_SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT" \
               -e URL="https://admin.culturemarketing.co.kr" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
+            
+            # 마지막에 정리 (실패해도 무방하도록 처리)
+            sudo docker image prune -f || true
+        env:
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          APP_KEYS: ${{ secrets.APP_KEYS }}
+          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
+          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-
-
