@@ -29,47 +29,41 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Build Docker image
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          DATABASE_SSL_CA_CONTENT: ${{ secrets.DATABASE_SSL_CA_CONTENT }}
-          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
-          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
-          APP_KEYS: ${{ secrets.APP_KEYS }}
-          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
-        run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/firebase.json
-          docker build \
-            --build-arg DATABASE_CLIENT=mysql \
-            --build-arg DATABASE_HOST=mysql-strapi-cmc-strapi.a.aivencloud.com \
-            --build-arg DATABASE_NAME=cm_c__strapi_db \
-            --build-arg DATABASE_PORT=24267 \
-            --build-arg DATABASE_SSL=true \
-            --build-arg DATABASE_USERNAME=avnadmin \
-            --build-arg FIREBASE_STORAGE_BUCKET=store-892ea.firebasestorage.app \
-            --build-arg GENERATE_SOURCEMAP=false \
-            --build-arg HOST=0.0.0.0 \
-            --build-arg PORT=1337 \
-            --build-arg SMTP_HOST=smtp.naver.com \
-            --build-arg SMTP_PORT=587 \
-            --build-arg SMTP_USERNAME=mm999999@naver.com \
-            --build-arg "URL=https://admin.culturemarketing.co.kr" \
-            --build-arg "ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET" \
-            --build-arg "API_TOKEN_SALT=$API_TOKEN_SALT" \
-            --build-arg "APP_KEYS=$APP_KEYS" \
-            --build-arg "DATABASE_PASSWORD=$DATABASE_PASSWORD" \
-            --build-arg "DATABASE_SSL_CA_CONTENT=$DATABASE_SSL_CA_CONTENT" \
-            --build-arg "JWT_SECRET=$JWT_SECRET" \
-            --build-arg "SMTP_PASSWORD=$SMTP_PASSWORD" \
-            --build-arg "TRANSFER_TOKEN_SALT=$TRANSFER_TOKEN_SALT" \
-            --build-arg "FIREBASE_SERVICE_ACCOUNT=$(cat /tmp/firebase.json)" \
-            -t ghcr.io/bizlsw91/cm_c__strapi-gcp:latest .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Push Docker image
-        run: docker push ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            DATABASE_CLIENT=mysql
+            DATABASE_HOST=mysql-strapi-cmc-strapi.a.aivencloud.com
+            DATABASE_NAME=cm_c__strapi_db
+            DATABASE_PORT=24267
+            DATABASE_SSL=true
+            DATABASE_USERNAME=avnadmin
+            FIREBASE_STORAGE_BUCKET=store-892ea.firebasestorage.app
+            GENERATE_SOURCEMAP=false
+            HOST=0.0.0.0
+            PORT=1337
+            SMTP_HOST=smtp.naver.com
+            SMTP_PORT=587
+            SMTP_USERNAME=mm999999@naver.com
+            URL=https://admin.culturemarketing.co.kr
+            ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }}
+            API_TOKEN_SALT=${{ secrets.API_TOKEN_SALT }}
+            APP_KEYS=${{ secrets.APP_KEYS }}
+            DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+            DATABASE_SSL_CA_CONTENT=${{ secrets.DATABASE_SSL_CA_CONTENT }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            TRANSFER_TOKEN_SALT=${{ secrets.TRANSFER_TOKEN_SALT }}
+            FIREBASE_SERVICE_ACCOUNT=${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Deploy to GCP VM
         uses: appleboy/ssh-action@v1.0.0
@@ -78,17 +72,18 @@ jobs:
           username: ${{ secrets.GCP_USERNAME }}
           key: ${{ secrets.GCP_SSH_KEY }}
           port: ${{ secrets.GCP_PORT || 22 }}
-          command_timeout: 20m
+          command_timeout: 30m
           script_stop: true
           debug: true
-          envs: DATABASE_PASSWORD,DATABASE_SSL_CA_CONTENT,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT,GHCR_TOKEN
+          envs: DATABASE_PASSWORD,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT,GHCR_TOKEN
           script: |
             echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u bizlsw91 --password-stdin
             sudo docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
-            sudo docker stop cmc-strapi || true
-            sudo docker rm cmc-strapi || true
-            # 컨테이너 시작 전 이미지 정리 (리소스 경합 방지)
-            sudo docker image prune -f
+            # 불필요한 stderr 로그 제거
+            sudo docker stop cmc-strapi 2>/dev/null || true
+            sudo docker rm cmc-strapi 2>/dev/null || true
+            
+            # 컨테이너 먼저 실행 (배포 우선순위)
             sudo docker run -d \
               --name cmc-strapi \
               --restart unless-stopped \
@@ -103,15 +98,6 @@ jobs:
               -e FIREBASE_SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT" \
               -e URL="https://admin.culturemarketing.co.kr" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
-        env:
-          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          DATABASE_SSL_CA_CONTENT: ${{ secrets.DATABASE_SSL_CA_CONTENT }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
-          APP_KEYS: ${{ secrets.APP_KEYS }}
-          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
-          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
 

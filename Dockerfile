@@ -1,8 +1,9 @@
-FROM node:20-slim
+# 1단계: 빌드 스테이지
+FROM node:20-slim AS builder
 
 WORKDIR /usr/src/app
 
-# 비민감 빌드 변수 (ENV로 이미지에 고정)
+# 빌드 인자 정의
 ARG DATABASE_CLIENT
 ARG DATABASE_HOST
 ARG DATABASE_NAME
@@ -18,7 +19,17 @@ ARG SMTP_HOST
 ARG SMTP_PORT
 ARG SMTP_USERNAME
 ARG URL
+ARG DATABASE_PASSWORD
+ARG DATABASE_SSL_CA_CONTENT
+ARG JWT_SECRET
+ARG ADMIN_JWT_SECRET
+ARG APP_KEYS
+ARG API_TOKEN_SALT
+ARG TRANSFER_TOKEN_SALT
+ARG SMTP_PASSWORD
+ARG FIREBASE_SERVICE_ACCOUNT
 
+# 환경 변수 설정
 ENV DATABASE_CLIENT=$DATABASE_CLIENT \
     DATABASE_HOST=$DATABASE_HOST \
     DATABASE_NAME=$DATABASE_NAME \
@@ -35,29 +46,14 @@ ENV DATABASE_CLIENT=$DATABASE_CLIENT \
     SMTP_USERNAME=$SMTP_USERNAME \
     URL=$URL
 
-# 민감 빌드 변수 (빌드 시에만 임시 사용)
-ARG DATABASE_PASSWORD
-ARG DATABASE_SSL_CA_CONTENT
-ARG JWT_SECRET
-ARG ADMIN_JWT_SECRET
-ARG APP_KEYS
-ARG API_TOKEN_SALT
-ARG TRANSFER_TOKEN_SALT
-ARG SMTP_PASSWORD
-ARG FIREBASE_SERVICE_ACCOUNT
-
-# npm run build 전에 인증서 파일 생성
+# 인증서 디렉토리 생성 (빌드 시 필요할 경우 대비)
 RUN mkdir -p /etc/ssl/aiven && \
     echo "$DATABASE_SSL_CA_CONTENT" | base64 -d > /etc/ssl/aiven/ca.pem
 
 COPY package*.json ./
-
-# ── 1단계: devDependencies 포함 전체 설치 (app.ts 커스텀 코드 빌드에 필요)
 RUN npm ci
 
 COPY . .
-
-# ── 2단계: strapi build (app.ts 커스텀 코드 포함)
 RUN rm -rf .cache && \
     DATABASE_PASSWORD=$DATABASE_PASSWORD \
     DATABASE_SSL_CA_CONTENT=$DATABASE_SSL_CA_CONTENT \
@@ -70,8 +66,25 @@ RUN rm -rf .cache && \
     FIREBASE_SERVICE_ACCOUNT=$FIREBASE_SERVICE_ACCOUNT \
     npm run build
 
-# ── 3단계: production 전용 node_modules로 교체 (이미지 경량화)
+# 2단계: 실행 스테이지 (경량화)
+FROM node:20-slim
+
+WORKDIR /usr/src/app
+
+# 빌드 결과물 및 필수 파일 복사
+COPY --from=builder /usr/src/app/package*.json ./
+COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/public ./public
+COPY --from=builder /usr/src/app/config ./config
+COPY --from=builder /usr/src/app/src/admin ./src/admin
+# 인증서 파일 포함
+COPY --from=builder /etc/ssl/aiven/ca.pem /etc/ssl/aiven/ca.pem
+
+# 프로덕션 의존성만 설치
 RUN npm ci --only=production
+
+# 환경 변수 재설정 (실행 시 필요)
+ENV NODE_ENV=production
 
 EXPOSE 1337
 CMD ["npm", "run", "start"]
