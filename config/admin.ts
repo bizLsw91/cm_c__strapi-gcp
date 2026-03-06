@@ -2,7 +2,7 @@ export default ({ env }) => ({
   auth: {
     secret: env('ADMIN_JWT_SECRET'),
     options: {
-      expiresIn: '1d', // 세션 만료 시간을 1일로 설정
+      expiresIn: '1d',
     },
   },
   autoReload: {
@@ -21,10 +21,11 @@ export default ({ env }) => ({
     promoteEE: env.bool('FLAG_PROMOTE_EE', true),
   },
   adminUrl: {
-    domain: env('PUBLIC_URL') ? env('PUBLIC_URL') : 'localhost'+env('PORT')
+    // ✅ undefined 연산 방지
+    domain: env('PUBLIC_URL') || `localhost:${env('PORT', '1337')}`,
   },
   preview: {
-    enabled: false, // false로 설정 시 Preview 기능 비활성화
+    enabled: false,
   },
   url: '/dashboard',
 });

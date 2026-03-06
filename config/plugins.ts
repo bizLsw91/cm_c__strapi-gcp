@@ -1,14 +1,27 @@
 import path from 'path';
 
+// ✅ JSON.parse를 런타임에만 실행되도록 헬퍼 함수로 분리
+const getFirebaseServiceAccount = (env) => {
+    const raw = env('FIREBASE_SERVICE_ACCOUNT');
+    if (!raw || raw === 'build-placeholder') {
+        return {}; // 빌드 타임엔 빈 객체 반환 (파싱 에러 방지)
+    }
+    try {
+        return JSON.parse(raw);
+    } catch (e) {
+        console.warn('⚠️  FIREBASE_SERVICE_ACCOUNT JSON 파싱 실패');
+        return {};
+    }
+};
+
 export default ({ env }) => ({
-    // ...
     'users-permissions': {
         config: {
             jwt: {
                 expiresIn: '30d',
             },
             register: {
-                allowedFields: [ // ✅ 커스텀 필드 추가
+                allowedFields: [
                     "full_name",
                     "contact",
                     "today_login",
@@ -41,16 +54,16 @@ export default ({ env }) => ({
         config: {
             provider: path.resolve(__dirname, '../src/providers/upload-firebase-custom'),
             providerOptions: {
-                serviceAccount: JSON.parse(env('FIREBASE_SERVICE_ACCOUNT')), // Firebase 서비스 계정
+                // ✅ 함수 호출로 변경 → import 시점에 실행 안됨
+                serviceAccount: getFirebaseServiceAccount(env),
                 bucket: env('FIREBASE_STORAGE_BUCKET'),
-                sortInStorage: true, // 폴더 구조 자동 정렬
+                sortInStorage: true,
                 debug: false,
                 directoryPaths: {
                     base: 'portfolio',
-                    thumb: false
-                }
-            }
-        }
-    }
-    // ...
+                    thumb: false,
+                },
+            },
+        },
+    },
 });
