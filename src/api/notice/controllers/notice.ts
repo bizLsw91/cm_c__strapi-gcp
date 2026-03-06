@@ -3,7 +3,7 @@
  */
 import { factories } from '@strapi/strapi'
 export default factories.createCoreController('api::notice.notice'
-    ,({ strapi }) =>  ({
+    , ({ strapi }) => ({
         async find(ctx) {
             // 1. 쿼리 파라미터 파싱
             const { recruitCode } = ctx.query
@@ -26,11 +26,11 @@ export default factories.createCoreController('api::notice.notice'
                 cateNameList = categories.map(c => c.name)
                 categoryFilter = {
                     $or: [
-                        {category_ko: {$null:true}},
-                        {category_ko: { name: {$notIn: cateNameList }}}
+                        { category_ko: { $null: true } },
+                        { category_ko: { name: { $notIn: cateNameList } } }
                     ]
                 }
-            // 채용공고
+                // 채용공고
             } else if (rcCode === 'recruit-1' || rcCode === 'recruit-2') {
                 categories = await strapi.entityService.findMany(
                     'api::category.category',
@@ -42,7 +42,7 @@ export default factories.createCoreController('api::notice.notice'
                     }
                 )
                 cateNameList = categories.map(c => c.name)
-                categoryFilter = {category_ko:{ name: {$in: cateNameList }}}
+                categoryFilter = { category_ko: { name: { $in: cateNameList } } }
             }
 
             // 4. 공지사항 필터링 조회
@@ -51,15 +51,15 @@ export default factories.createCoreController('api::notice.notice'
             const baseFilters = sanitizedQuery.filters ? sanitizedQuery.filters as Record<string, unknown> : {};
 
             let filter = {}
-            if (Object.keys(baseFilters).length==0) {
+            if (Object.keys(baseFilters).length == 0) {
                 filter = {
                     ...categoryFilter
                 }
             } else {
                 filter = {
                     $and: [
-                        {...baseFilters},
-                        {...categoryFilter}
+                        { ...baseFilters },
+                        { ...categoryFilter }
                     ]
                 }
             }
@@ -78,6 +78,32 @@ export default factories.createCoreController('api::notice.notice'
             // 5. 응답 데이터 변환
             const sanitizedResults = await this.sanitizeOutput(results, ctx)
             return this.transformResponse(sanitizedResults, { pagination })
+        },
+
+        async addView(ctx) {
+            const { id } = ctx.params;
+
+            if (!id) {
+                return ctx.badRequest('Id is required');
+            }
+
+            // strapi.db.query를 사용하면 updatedAt이 자동으로 갱신되지 않습니다.
+            const entry = await strapi.db.query('api::notice.notice').findOne({
+                where: { id }
+            });
+
+            if (!entry) {
+                return ctx.notFound('Notice not found');
+            }
+
+            const updatedEntry = await strapi.db.query('api::notice.notice').update({
+                where: { id },
+                data: {
+                    view_cnt: (entry.view_cnt || 0) + 1
+                }
+            });
+
+            return this.transformResponse(updatedEntry);
         }
     })
 );
