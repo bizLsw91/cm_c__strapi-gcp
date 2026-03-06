@@ -75,8 +75,6 @@ WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/package*.json ./
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/public ./public
-COPY --from=builder /usr/src/app/config ./config
-COPY --from=builder /usr/src/app/src/admin ./src/admin
 # 인증서 파일 포함
 COPY --from=builder /etc/ssl/aiven/ca.pem /etc/ssl/aiven/ca.pem
 
