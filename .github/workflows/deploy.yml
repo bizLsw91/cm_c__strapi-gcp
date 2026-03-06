@@ -87,11 +87,12 @@ jobs:
             sudo docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
             sudo docker stop cmc-strapi || true
             sudo docker rm cmc-strapi || true
+            # 컨테이너 시작 전 이미지 정리 (리소스 경합 방지)
+            sudo docker image prune -f
             sudo docker run -d \
               --name cmc-strapi \
               --restart unless-stopped \
               -p 1337:1337 \
-              -v /etc/ssl/aiven/ca.pem:/etc/ssl/aiven/ca.pem \
               -e DATABASE_PASSWORD="$DATABASE_PASSWORD" \
               -e JWT_SECRET="$JWT_SECRET" \
               -e ADMIN_JWT_SECRET="$ADMIN_JWT_SECRET" \
@@ -102,7 +103,6 @@ jobs:
               -e FIREBASE_SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT" \
               -e URL="https://admin.culturemarketing.co.kr" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
-            sudo docker image prune -f
         env:
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           DATABASE_SSL_CA_CONTENT: ${{ secrets.DATABASE_SSL_CA_CONTENT }}
