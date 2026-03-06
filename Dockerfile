@@ -1,88 +1,63 @@
-# 1단계: 빌드 스테이지
-FROM node:20-slim AS builder
-
+# ✅ 1단계: 의존성 설치 (캐시 레이어 독립 분리)
+FROM node:20-slim AS deps
 WORKDIR /usr/src/app
-
-# 빌드 인자 정의
-ARG DATABASE_CLIENT
-ARG DATABASE_HOST
-ARG DATABASE_NAME
-ARG DATABASE_SCHEMA
-ARG DATABASE_PORT
-ARG DATABASE_SSL
-ARG DATABASE_USERNAME
-ARG FIREBASE_STORAGE_BUCKET
-ARG GENERATE_SOURCEMAP
-ARG HOST
-ARG PORT
-ARG SMTP_HOST
-ARG SMTP_PORT
-ARG SMTP_USERNAME
-ARG URL
-ARG DATABASE_PASSWORD
-ARG DATABASE_SSL_CA_CONTENT
-ARG JWT_SECRET
-ARG ADMIN_JWT_SECRET
-ARG APP_KEYS
-ARG API_TOKEN_SALT
-ARG TRANSFER_TOKEN_SALT
-ARG SMTP_PASSWORD
-ARG FIREBASE_SERVICE_ACCOUNT
-
-# 환경 변수 설정
-ENV DATABASE_CLIENT=$DATABASE_CLIENT \
-    DATABASE_HOST=$DATABASE_HOST \
-    DATABASE_NAME=$DATABASE_NAME \
-    DATABASE_SCHEMA=$DATABASE_SCHEMA \
-    DATABASE_PORT=$DATABASE_PORT \
-    DATABASE_SSL=$DATABASE_SSL \
-    DATABASE_USERNAME=$DATABASE_USERNAME \
-    FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET \
-    GENERATE_SOURCEMAP=$GENERATE_SOURCEMAP \
-    HOST=$HOST \
-    PORT=$PORT \
-    SMTP_HOST=$SMTP_HOST \
-    SMTP_PORT=$SMTP_PORT \
-    SMTP_USERNAME=$SMTP_USERNAME \
-    URL=$URL
-
-# 인증서 디렉토리 생성 (빌드 시 필요할 경우 대비)
-RUN mkdir -p /etc/ssl/aiven && \
-    echo "$DATABASE_SSL_CA_CONTENT" | base64 -d > /etc/ssl/aiven/ca.pem
-
 COPY package*.json ./
 RUN npm ci
 
-COPY . .
-RUN rm -rf .cache && \
-    DATABASE_PASSWORD=$DATABASE_PASSWORD \
-    DATABASE_SSL_CA_CONTENT=$DATABASE_SSL_CA_CONTENT \
-    JWT_SECRET=$JWT_SECRET \
-    ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET \
-    APP_KEYS=$APP_KEYS \
-    API_TOKEN_SALT=$API_TOKEN_SALT \
-    TRANSFER_TOKEN_SALT=$TRANSFER_TOKEN_SALT \
-    SMTP_PASSWORD=$SMTP_PASSWORD \
-    FIREBASE_SERVICE_ACCOUNT=$FIREBASE_SERVICE_ACCOUNT \
-    npm run build
-
-# 2단계: 실행 스테이지 (경량화)
-FROM node:20-slim
-
+# ✅ 2단계: 빌드 (시크릿 전혀 불필요)
+FROM node:20-slim AS builder
 WORKDIR /usr/src/app
 
-# 빌드 결과물 및 필수 파일 복사
-COPY --from=builder /usr/src/app/package*.json ./
+COPY --from=deps /usr/src/app/node_modules ./node_modules
+COPY . .
+
+ENV NODE_ENV=production \
+    GENERATE_SOURCEMAP=false \
+    HOST=0.0.0.0 \
+    PORT=1337 \
+    DATABASE_CLIENT=mysql \
+    DATABASE_HOST=build-placeholder \
+    DATABASE_PORT=3306 \
+    DATABASE_NAME=build-placeholder \
+    DATABASE_USERNAME=build-placeholder \
+    DATABASE_PASSWORD=build-placeholder \
+    DATABASE_SSL=false \
+    JWT_SECRET=build-placeholder-jwt-secret-minimum32chars!! \
+    ADMIN_JWT_SECRET=build-placeholder-adminjwt-minimum32chars! \
+    APP_KEYS=build-placeholder-key1,build-placeholder-key2 \
+    API_TOKEN_SALT=build-placeholder-api-salt-32chars!!! \
+    TRANSFER_TOKEN_SALT=build-placeholder-transfer-32chars! \
+    FIREBASE_STORAGE_BUCKET=build-placeholder \
+    FIREBASE_SERVICE_ACCOUNT=build-placeholder \
+    SMTP_HOST=smtp.gmail.com \
+    SMTP_PORT=587 \
+    SMTP_USERNAME=build-placeholder \
+    SMTP_PASSWORD=build-placeholder \
+    URL=http://localhost:1337 \
+    PUBLIC_URL=http://localhost:1337
+
+RUN npm run build
+
+# ✅ 3단계: 실행 이미지 (경량화)
+FROM node:20-slim AS runner
+WORKDIR /usr/src/app
+
+RUN mkdir -p /etc/ssl/aiven
+
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/public ./public
-# 인증서 파일 포함
-COPY --from=builder /etc/ssl/aiven/ca.pem /etc/ssl/aiven/ca.pem
+COPY --from=builder /usr/src/app/src ./src
+COPY --from=builder /usr/src/app/config ./config
+COPY --from=builder /usr/src/app/database ./database
+COPY --from=builder /usr/src/app/package*.json ./
 
-# 프로덕션 의존성만 설치
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
-# 환경 변수 재설정 (실행 시 필요)
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 ENV NODE_ENV=production
-
 EXPOSE 1337
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["npm", "run", "start"]

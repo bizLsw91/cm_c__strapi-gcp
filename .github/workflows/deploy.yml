@@ -11,59 +11,40 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Check files
+      - name: Check admin/package changes
+        id: change_check
         run: |
-          pwd
-          ls -la  
+          git fetch origin master --depth=2
+          if git diff --name-only HEAD~1 HEAD | grep -qE "^src/admin/|^package.*json"; then
+            echo "heavy_change=true" >> $GITHUB_OUTPUT
+            echo "🔴 Admin or package changed - full build"
+          else
+            echo "heavy_change=false" >> $GITHUB_OUTPUT
+            echo "🟢 Source only - cache build"
+          fi
 
       - name: Log in to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u bizLsw91 --password-stdin
-
-      - name: Cache node modules
-        uses: actions/cache@v3
+        uses: docker/login-action@v3
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          registry: ghcr.io
+          username: bizLsw91
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: ${{ steps.change_check.outputs.heavy_change == 'true' && 'type=gha,mode=max' || 'type=gha' }}
           build-args: |
-            DATABASE_CLIENT=mysql
-            DATABASE_HOST=mysql-strapi-cmc-strapi.a.aivencloud.com
-            DATABASE_NAME=cm_c__strapi_db
-            DATABASE_PORT=24267
-            DATABASE_SSL=true
-            DATABASE_USERNAME=avnadmin
-            FIREBASE_STORAGE_BUCKET=store-892ea.firebasestorage.app
-            GENERATE_SOURCEMAP=false
-            HOST=0.0.0.0
-            PORT=1337
-            SMTP_HOST=smtp.naver.com
-            SMTP_PORT=587
-            SMTP_USERNAME=mm999999@naver.com
-            URL=https://admin.culturemarketing.co.kr
-            ADMIN_JWT_SECRET=${{ secrets.ADMIN_JWT_SECRET }}
-            API_TOKEN_SALT=${{ secrets.API_TOKEN_SALT }}
-            APP_KEYS=${{ secrets.APP_KEYS }}
-            DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
-            DATABASE_SSL_CA_CONTENT=${{ secrets.DATABASE_SSL_CA_CONTENT }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-            TRANSFER_TOKEN_SALT=${{ secrets.TRANSFER_TOKEN_SALT }}
-            FIREBASE_SERVICE_ACCOUNT=${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+            NODE_ENV=production
 
       - name: Deploy to GCP VM
         uses: appleboy/ssh-action@v1.0.0
@@ -74,31 +55,45 @@ jobs:
           port: ${{ secrets.GCP_PORT || 22 }}
           command_timeout: 30m
           script_stop: true
-          debug: true
-          envs: DATABASE_PASSWORD,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT,GHCR_TOKEN
           script: |
-            echo "$GHCR_TOKEN" | sudo docker login ghcr.io -u bizlsw91 --password-stdin
+            echo "${{ secrets.GHCR_TOKEN }}" | sudo docker login ghcr.io -u bizlsw91 --password-stdin
             sudo docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
-            # 불필요한 stderr 로그 제거
+
             sudo docker stop cmc-strapi 2>/dev/null || true
             sudo docker rm cmc-strapi 2>/dev/null || true
-            
-            # 컨테이너 먼저 실행 (배포 우선순위)
+
             sudo docker run -d \
               --name cmc-strapi \
               --restart unless-stopped \
               -p 1337:1337 \
-              -e DATABASE_PASSWORD="$DATABASE_PASSWORD" \
-              -e JWT_SECRET="$JWT_SECRET" \
-              -e ADMIN_JWT_SECRET="$ADMIN_JWT_SECRET" \
-              -e APP_KEYS="$APP_KEYS" \
-              -e API_TOKEN_SALT="$API_TOKEN_SALT" \
-              -e TRANSFER_TOKEN_SALT="$TRANSFER_TOKEN_SALT" \
-              -e SMTP_PASSWORD="$SMTP_PASSWORD" \
-              -e FIREBASE_SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT" \
+              --memory="700m" \
+              --memory-swap="2g" \
+              -e NODE_ENV=production \
+              -e HOST=0.0.0.0 \
+              -e PORT=1337 \
               -e URL="https://admin.culturemarketing.co.kr" \
+              -e DATABASE_CLIENT=mysql \
+              -e DATABASE_HOST=mysql-strapi-cmc-strapi.a.aivencloud.com \
+              -e DATABASE_NAME=cm_c__strapi_db \
+              -e DATABASE_PORT=24267 \
+              -e DATABASE_SSL=true \
+              -e DATABASE_USERNAME=avnadmin \
+              -e FIREBASE_STORAGE_BUCKET=store-892ea.firebasestorage.app \
+              -e SMTP_HOST=smtp.naver.com \
+              -e SMTP_PORT=587 \
+              -e SMTP_USERNAME=mm999999@naver.com \
+              -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
+              -e DATABASE_SSL_CA_CONTENT="${{ secrets.DATABASE_SSL_CA_CONTENT }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e ADMIN_JWT_SECRET="${{ secrets.ADMIN_JWT_SECRET }}" \
+              -e APP_KEYS="${{ secrets.APP_KEYS }}" \
+              -e API_TOKEN_SALT="${{ secrets.API_TOKEN_SALT }}" \
+              -e TRANSFER_TOKEN_SALT="${{ secrets.TRANSFER_TOKEN_SALT }}" \
+              -e SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}" \
+              -e FIREBASE_SERVICE_ACCOUNT="${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
 
-
+            echo "⏳ 컨테이너 기동 대기 중..."
+            sleep 30
+            sudo docker ps | grep cmc-strapi && echo "✅ 배포 성공" || echo "❌ 컨테이너 실행 실패"
+            sudo docker image prune -f || true
