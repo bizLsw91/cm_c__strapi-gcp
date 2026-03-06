@@ -44,16 +44,21 @@ WORKDIR /usr/src/app
 
 RUN mkdir -p /etc/ssl/aiven
 
-# ✅ dist/ 만 복사 (dist/config, dist/src .js 컴파일본 포함)
-# ✅ 원본 config/*.ts 절대 복사 안함
-COPY --from=builder /usr/src/app/dist ./dist
+# ✅ dist/config → config/ 로 복사 (컴파일된 .js 파일을 루트 config에 위치)
+COPY --from=builder /usr/src/app/dist/config ./config
+
+# ✅ admin 빌드 결과물
+COPY --from=builder /usr/src/app/dist/build ./dist/build
+
+# ✅ dist/src (컴파일된 소스)
+COPY --from=builder /usr/src/app/dist/src ./dist/src
+
 COPY --from=builder /usr/src/app/public ./public
 COPY --from=builder /usr/src/app/package*.json ./
 
-# ✅ 커스텀 Firebase provider (dist에 포함 안될 수 있어서 별도 복사)
-COPY --from=builder /usr/src/app/src/providers ./src/providers
+# ✅ 커스텀 Firebase provider (원본 유지 필요)
+COPY --from=builder /usr/src/app/src ./src
 
-# ✅ node_modules는 builder에서 그대로 복사 (재설치 시간 절약)
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 
 COPY docker-entrypoint.sh ./
