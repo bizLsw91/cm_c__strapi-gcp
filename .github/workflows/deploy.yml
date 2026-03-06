@@ -55,8 +55,12 @@ jobs:
           port: ${{ secrets.GCP_PORT || 22 }}
           command_timeout: 30m
           script_stop: true
+          # ✅ envs로 시크릿 전달 (env: 블록 제거)
+          envs: GHCR_TOKEN,DATABASE_PASSWORD,DATABASE_SSL_CA_CONTENT,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT
           script: |
-            echo "${{ secrets.GHCR_TOKEN }}" | sudo docker login ghcr.io -u bizlsw91 --password-stdin
+            # ✅ TTY 문제 해결: -i 없이 stdin으로 전달
+            echo "${GHCR_TOKEN}" | sudo docker login ghcr.io -u bizlsw91 --password-stdin
+
             sudo docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
 
             sudo docker stop cmc-strapi 2>/dev/null || true
@@ -82,18 +86,29 @@ jobs:
               -e SMTP_HOST=smtp.naver.com \
               -e SMTP_PORT=587 \
               -e SMTP_USERNAME=mm999999@naver.com \
-              -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
-              -e DATABASE_SSL_CA_CONTENT="${{ secrets.DATABASE_SSL_CA_CONTENT }}" \
-              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-              -e ADMIN_JWT_SECRET="${{ secrets.ADMIN_JWT_SECRET }}" \
-              -e APP_KEYS="${{ secrets.APP_KEYS }}" \
-              -e API_TOKEN_SALT="${{ secrets.API_TOKEN_SALT }}" \
-              -e TRANSFER_TOKEN_SALT="${{ secrets.TRANSFER_TOKEN_SALT }}" \
-              -e SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}" \
-              -e FIREBASE_SERVICE_ACCOUNT="${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" \
+              -e DATABASE_PASSWORD="${DATABASE_PASSWORD}" \
+              -e DATABASE_SSL_CA_CONTENT="${DATABASE_SSL_CA_CONTENT}" \
+              -e JWT_SECRET="${JWT_SECRET}" \
+              -e ADMIN_JWT_SECRET="${ADMIN_JWT_SECRET}" \
+              -e APP_KEYS="${APP_KEYS}" \
+              -e API_TOKEN_SALT="${API_TOKEN_SALT}" \
+              -e TRANSFER_TOKEN_SALT="${TRANSFER_TOKEN_SALT}" \
+              -e SMTP_PASSWORD="${SMTP_PASSWORD}" \
+              -e FIREBASE_SERVICE_ACCOUNT="${FIREBASE_SERVICE_ACCOUNT}" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
 
             echo "⏳ 컨테이너 기동 대기 중..."
             sleep 30
             sudo docker ps | grep cmc-strapi && echo "✅ 배포 성공" || echo "❌ 컨테이너 실행 실패"
             sudo docker image prune -f || true
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_SSL_CA_CONTENT: ${{ secrets.DATABASE_SSL_CA_CONTENT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          APP_KEYS: ${{ secrets.APP_KEYS }}
+          API_TOKEN_SALT: ${{ secrets.API_TOKEN_SALT }}
+          TRANSFER_TOKEN_SALT: ${{ secrets.TRANSFER_TOKEN_SALT }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
