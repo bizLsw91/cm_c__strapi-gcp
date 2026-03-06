@@ -55,23 +55,25 @@ jobs:
           port: ${{ secrets.GCP_PORT || 22 }}
           command_timeout: 30m
           script_stop: true
-          # ✅ envs로 시크릿 전달 (env: 블록 제거)
-          envs: GHCR_TOKEN,DATABASE_PASSWORD,DATABASE_SSL_CA_CONTENT,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT
+          envs: GHCR_TOKEN,DATABASE_PASSWORD,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT
           script: |
-            # ✅ TTY 문제 해결: -i 없이 stdin으로 전달
-            echo "${GHCR_TOKEN}" | sudo docker login ghcr.io -u bizlsw91 --password-stdin
-
-            sudo docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
-
+            # ✅ pull 전에 메모리/디스크 여유 확보
             sudo docker stop cmc-strapi 2>/dev/null || true
             sudo docker rm cmc-strapi 2>/dev/null || true
+            sudo docker image prune -f || true
 
+            # ✅ 새 이미지 pull
+            echo "${GHCR_TOKEN}" | sudo docker login ghcr.io -u bizlsw91 --password-stdin
+            sudo docker pull ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
+
+            # ✅ 컨테이너 실행 (SSL 인증서 볼륨 마운트)
             sudo docker run -d \
               --name cmc-strapi \
               --restart unless-stopped \
               -p 1337:1337 \
               --memory="700m" \
               --memory-swap="2g" \
+              -v /etc/ssl/aiven/ca.pem:/etc/ssl/aiven/ca.pem:ro \
               -e NODE_ENV=production \
               -e HOST=0.0.0.0 \
               -e PORT=1337 \
@@ -87,7 +89,6 @@ jobs:
               -e SMTP_PORT=587 \
               -e SMTP_USERNAME=mm999999@naver.com \
               -e DATABASE_PASSWORD="${DATABASE_PASSWORD}" \
-              -e DATABASE_SSL_CA_CONTENT="${DATABASE_SSL_CA_CONTENT}" \
               -e JWT_SECRET="${JWT_SECRET}" \
               -e ADMIN_JWT_SECRET="${ADMIN_JWT_SECRET}" \
               -e APP_KEYS="${APP_KEYS}" \
@@ -97,14 +98,13 @@ jobs:
               -e FIREBASE_SERVICE_ACCOUNT="${FIREBASE_SERVICE_ACCOUNT}" \
               ghcr.io/bizlsw91/cm_c__strapi-gcp:latest
 
+            # ✅ 기동 확인
             echo "⏳ 컨테이너 기동 대기 중..."
             sleep 30
             sudo docker ps | grep cmc-strapi && echo "✅ 배포 성공" || echo "❌ 컨테이너 실행 실패"
-            sudo docker image prune -f || true
         env:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          DATABASE_SSL_CA_CONTENT: ${{ secrets.DATABASE_SSL_CA_CONTENT }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
           APP_KEYS: ${{ secrets.APP_KEYS }}
