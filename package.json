@@ -8,6 +8,7 @@
     "build": "strapi build",
     "deploy": "strapi deploy",
     "dev": "strapi develop",
+    "dev:bell": "node scripts/bell-dev.mjs",
     "seed:example": "node ./scripts/seed.js",
     "start": "strapi start",
     "strapi": "strapi"
