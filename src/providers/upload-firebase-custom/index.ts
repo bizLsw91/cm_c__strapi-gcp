@@ -22,8 +22,19 @@ const streamToBuffer = (stream: Readable): Promise<Buffer> =>
     new Promise((resolve, reject) => {
         const chunks: Uint8Array[] = [];
         stream.on("data", (c) => chunks.push(c));
-        stream.on("end", () => resolve(Buffer.concat(chunks)));
-        stream.on("error", reject);
+        stream.on("end", () => {
+            // Windows 환경 EBUSY 방지: 데이터 읽기가 끝나면 즉시 파일 잠금(스트림) 해제
+            if (typeof (stream as any).destroy === 'function') {
+                (stream as any).destroy();
+            }
+            resolve(Buffer.concat(chunks));
+        });
+        stream.on("error", (err) => {
+            if (typeof (stream as any).destroy === 'function') {
+                (stream as any).destroy();
+            }
+            reject(err);
+        });
     });
 
 const isImageMime = (mime: string) => mime.startsWith("image/");
@@ -57,12 +68,14 @@ interface InitOptions {
     debug?: boolean;
     defaultDirPath?: string;
     // 브라우저에서 이미 변환했으므로 sharp 관련 옵션은 제거됨
-    // (하위 호환을 위해 타입만 남기고 무시)
-    defaultQuality?: number;
+    resizeOptions?: {
+        width?: number;
+        height?: number;
+    };
+    initialQuality?: number;
     qualityDecrement?: number;
     minQuality?: number;
     maxFileSize?: number;
-    resizeOptions?: object;
     /** 서버에서 허용할 WebP 최대 크기 (바이트). 기본값 3MB */
     maxServerFileSizeBytes?: number;
 }
@@ -70,7 +83,7 @@ interface InitOptions {
 /* ---------- 메인 로직 ---------- */
 module.exports = {
     init(config: InitOptions) {
-        console.log('[upload-provider] 초기화 (브라우저 사이드 이미지 처리 모드)');
+        console.log('[upload-provider] 초기화 (백엔드 sharp 개량 변환 모드)');
 
         /* [핵심] 업로드 작업을 순차적으로 처리하기 위한 큐 */
         let uploadQueue = Promise.resolve();
@@ -106,6 +119,13 @@ module.exports = {
 
         // 서버 측 파일 크기 상한 (브라우저 변환 후 기준, 기본 3 MB)
         const MAX_SERVER_BYTES = config.maxServerFileSizeBytes ?? 3 * 1024 * 1024;
+
+        // 개량 버전용 동적 압축 옵션 (기본값 설정)
+        const resizeHeight = config.resizeOptions?.height ?? 900;
+        const maxWebpSize = config.maxFileSize ?? 512 * 1024; // 512KB
+        const initialQuality = config.initialQuality ?? 80;
+        const minQuality = config.minQuality ?? 10;
+        const qualityStep = config.qualityDecrement ?? 10;
 
         /* ----- 디버그 헬퍼 ----- */
         const print = (msg?: any, ...opt: any[]) => {
@@ -149,29 +169,54 @@ module.exports = {
                 throw new Error('File stream/buffer missing');
             }
 
-            // 2. 이미지 검증 (브라우저에서 이미 WebP 변환 완료 상태여야 함)
-            if (isImageMime(file.mime)) {
-                // 서버 크기 검증
-                if (rawBuffer.length > MAX_SERVER_BYTES) {
-                    throw new Error(
-                        `[upload-provider] 이미지 크기(${(rawBuffer.length / 1024).toFixed(1)} KB)가 ` +
-                        `허용 상한(${(MAX_SERVER_BYTES / 1024).toFixed(0)} KB)을 초과합니다.`
-                    );
-                }
+            // 2. 백엔드 이미지 리사이징 및 WebP 변환 (사용자 개량 버전 로직)
+            if (isImageMime(file.mime) && !file.mime.includes('svg')) { // SVG는 변환 제외
+                try {
+                    const sharp = require('sharp');
+                    let quality = initialQuality;
+                    
+                    // 최초 변환 시도 (설정된 세로 기준 리사이징 + WebP)
+                    let processedBuffer = await sharp(rawBuffer)
+                        .resize({ height: resizeHeight, withoutEnlargement: true })
+                        .webp({ quality })
+                        .toBuffer();
 
-                // 브라우저 변환 여부 경고 (WebP가 아닌 경우)
-                if (file.mime !== 'image/webp') {
-                    console.warn(
-                        `[upload-provider] ⚠️ 이미지가 WebP가 아닙니다 (${file.mime}). ` +
-                        `브라우저 인터셉터가 동작하지 않았습니다. 원본 파일로 업로드합니다.`
-                    );
-                }
+                    // 다이내믹 압축 루프: maxWebpSize 초과 시 품질을 qualityStep씩 깎으며 재시도
+                    while (processedBuffer.length > maxWebpSize && quality > minQuality) {
+                        quality -= qualityStep;
+                        processedBuffer = await sharp(rawBuffer)
+                            .resize({ height: resizeHeight, withoutEnlargement: true })
+                            .webp({ quality })
+                            .toBuffer();
+                    }
 
+                    // 최종 처리된 이미지의 메타데이터 추출 (Strapi DB 저장용)
+                    const metadata = await sharp(processedBuffer).metadata();
+                    file.width = metadata.width;
+                    file.height = metadata.height;
+                    
+                    // 파일 정보 갱신 (확장자 및 마임타입)
+                    rawBuffer = processedBuffer;
+                    file.mime = 'image/webp';
+                    file.ext = '.webp';
+                    
+                    // 파일 표시용 이름 변경 (확장자만 .webp로 교체)
+                    file.name = path.basename(file.name, path.extname(file.name)) + '.webp';
+
+                    console.log(`[upload-provider] 🌟 개량 버전 WebP 변환 성공! (품질: ${quality}, 크기: ${(rawBuffer.length / 1024).toFixed(1)} KB)`);
+
+                } catch (sharpErr: any) {
+                    console.warn('[upload-provider] ❌ sharp 변환 실패, 원본 유지:', sharpErr.message);
+                }
+                
                 file.buffer = rawBuffer;
                 file.size = rawBuffer.length / 1024;
                 delete file.stream;
             } else {
-                // 비이미지(PDF, 동영상 등)는 원본 그대로
+                // 비이미지(PDF, 동영상, SVG 등) 용량 검사 및 통과
+                if (rawBuffer.length > MAX_SERVER_BYTES * 2) { 
+                    throw new Error(`[upload-provider] 허용 상한 용량 초과`);
+                }
                 file.buffer = rawBuffer;
                 file.size = rawBuffer.length / 1024;
                 delete file.stream;

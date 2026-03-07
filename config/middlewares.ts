@@ -12,6 +12,7 @@ export default [
           "img-src": [
             "'self'",
             "data:",
+            "blob:",
             "*",
             'https://analytics.strapi.io',
           ],

@@ -63,6 +63,15 @@ export default ({ env }) => ({
                     base: 'portfolio',
                     thumb: false,
                 },
+                // ✅ 개량 버전 이미지 변환 옵션
+                maxFileSize: 800 * 1024, // 512KB (압축 목표치)
+                resizeOptions: {
+                    height: 900,         // 세로 900px 기준 리사이징
+                },
+                initialQuality: 80,      // 초기 품질
+                qualityDecrement: 10,    // 압축 시 화질 감소폭
+                minQuality: 10,          // 최소 보장 품질
+                maxServerFileSizeBytes: 10 * 1024 * 1024, // 서버 수신 최대 허용 (10MB)
             },
         },
     },

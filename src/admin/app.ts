@@ -84,8 +84,10 @@ export default {
         setupPdfValidation();
         console.log('[app.tsx] PDF 전용 업로드 검증 인터셉터 등록됨');
 
-        // 3. 브라우저 사이드 이미지 WebP 변환
-        setupUploadInterceptor();
-        console.log('[app.tsx] 이미지 업로드 인터셉터(WebP 변환) 등록됨');
+        // 3. (폐기됨) 브라우저 사이드 이미지 WebP 변환
+        // 프론트엔드 환경 변수(React Dropzone 이벤트 캡처, CSP, 터널 타임아웃) 회피를 위해 
+        // 백엔드(Firebase Provider)의 sharp 일괄 변환으로 파이프라인을 이관했습니다.
+        // setupUploadInterceptor();
+        // console.log('[app.tsx] 이미지 업로드 인터셉터 비활성화 (백엔드 이관됨)');
     },
 };

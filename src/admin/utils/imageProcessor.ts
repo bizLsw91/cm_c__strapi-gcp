@@ -85,21 +85,22 @@ const hideConvertingOverlay = () =>
     document.getElementById('__webp_overlay__')?.remove();
 
 /**
- * document 전체에서 <input type="file"> 의 change 이벤트를 캡처 페이즈에서
- * 가로채서 이미지 파일을 WebP 로 변환한 뒤 React 에 재전달합니다.
+ * document 전체에서 <input type="file"> 의 change 이벤트와
+ * drop, paste 이벤트를 캡처 페이즈에서 가로채서 이미지 파일을 WebP 로 변환한 뒤 React 에 재전달합니다.
  */
 export const setupUploadInterceptor = () => {
-    document.addEventListener('change', async (e: Event) => {
-        const input = e.target as HTMLInputElement;
-        if (input.type !== 'file' || !input.files?.length) return;
-        if ((input as any)[WEBP_PROCESSED_FLAG]) return; // 재진입 방지
-
-        const files = Array.from(input.files);
+    // 공통 파일 처리기
+    const processFiles = async (
+        files: File[],
+        eventToStop: Event,
+        reDispatchFn: (dt: DataTransfer) => void
+    ) => {
         const hasImages = files.some((f) => f.type.startsWith('image/'));
         if (!hasImages) return; // 이미지 없으면 통과
 
         // React 이벤트 핸들러가 원본 이벤트를 보지 못하도록 차단
-        e.stopImmediatePropagation();
+        eventToStop.stopImmediatePropagation();
+        eventToStop.preventDefault(); // 기본 동작(브라우저 열기 등) 방지
 
         showConvertingOverlay();
         try {
@@ -109,19 +110,90 @@ export const setupUploadInterceptor = () => {
                 ),
             );
 
+            console.log('[MediaWebP] ✨ 이미지 WebP 변환 성공!', converted.map(f => f.name));
+
             const dt = new DataTransfer();
             converted.forEach((f) => dt.items.add(f));
-            // input.files 를 변환된 WebP 파일로 교체
-            Object.defineProperty(input, 'files', { value: dt.files, configurable: true });
+            
+            // 변환된 파일 리스트를 사용하여 이벤트 재실행
+            reDispatchFn(dt);
+            
         } catch (err) {
-            console.warn('[MediaWebP] 변환 실패, 원본 파일로 대체:', err);
-            // 실패해도 원본 파일은 그대로 사용하도록 files 를 건드리지 않음
+            console.warn('[MediaWebP] ❌ 이미지 변환 실패, 원본 파일로 대체:', err);
+            // 실패 시 원본 그대로 진행
+            const dt = new DataTransfer();
+            files.forEach(f => dt.items.add(f));
+            reDispatchFn(dt);
         } finally {
             hideConvertingOverlay();
-            // 変換 후(또는 실패 후) React 에 change 이벤트 재전달
-            (input as any)[WEBP_PROCESSED_FLAG] = true;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            delete (input as any)[WEBP_PROCESSED_FLAG];
         }
-    }, true /* 캡처 페이즈: React 이전에 가로챔 */);
+    };
+
+    // 1. INPUT 바인딩 (change 이벤트)
+    document.addEventListener('change', async (e: Event) => {
+        const input = e.target as HTMLInputElement;
+        if (input.type !== 'file' || !input.files?.length) return;
+        if ((input as any)[WEBP_PROCESSED_FLAG]) return;
+
+        console.log('[MediaWebP] 파일 선택 (INPUT) 감지');
+        const files = Array.from(input.files);
+        processFiles(files, e, (newDt) => {
+            Object.defineProperty(input, 'files', { value: newDt.files, configurable: true });
+            (input as any)[WEBP_PROCESSED_FLAG] = true;
+            input.dispatchEvent(new Event('change', { bubbles: e.bubbles }));
+            delete (input as any)[WEBP_PROCESSED_FLAG];
+        });
+    }, true);
+
+    // 2. DROP 바인딩 (드래그 앤 드롭)
+    document.addEventListener('drop', async (e: DragEvent) => {
+        if (!e.dataTransfer?.files?.length) return;
+        if ((e as any)[WEBP_PROCESSED_FLAG]) return;
+
+        console.log('[MediaWebP] 🖱️ 드래그 앤 드롭 (DROP) 감지!');
+
+        const files = Array.from(e.dataTransfer.files);
+        processFiles(files, e, (newDt) => {
+            // 새 DragEvent 생성하여 동일 타겟에 Dispatch
+            const dropEvent = new DragEvent('drop', {
+                bubbles: e.bubbles,
+                cancelable: e.cancelable,
+                clientX: e.clientX,
+                clientY: e.clientY,
+                screenX: e.screenX,
+                screenY: e.screenY,
+                dataTransfer: new DataTransfer() // Edge 케이스 방지용
+            });
+            
+            // dataTransfer 프로퍼티 오버라이드 (React Dropzone 우회 방지: items까지 완벽 교체)
+            Object.defineProperty(dropEvent, 'dataTransfer', {
+                value: { files: newDt.files, items: newDt.items, types: newDt.types },
+            });
+
+            (dropEvent as any)[WEBP_PROCESSED_FLAG] = true;
+            e.target?.dispatchEvent(dropEvent);
+        });
+    }, true);
+
+    // 3. PASTE 바인딩 (클립보드 붙여넣기)
+    document.addEventListener('paste', async (e: ClipboardEvent) => {
+        if (!e.clipboardData?.files?.length) return;
+        if ((e as any)[WEBP_PROCESSED_FLAG]) return;
+
+        const files = Array.from(e.clipboardData.files);
+        processFiles(files, e, (newDt) => {
+             const pasteEvent = new ClipboardEvent('paste', {
+                 bubbles: e.bubbles,
+                 cancelable: e.cancelable,
+                 clipboardData: new DataTransfer()
+             });
+
+             Object.defineProperty(pasteEvent, 'clipboardData', {
+                 value: { files: newDt.files, items: newDt.items, types: newDt.types },
+             });
+
+             (pasteEvent as any)[WEBP_PROCESSED_FLAG] = true;
+             e.target?.dispatchEvent(pasteEvent);
+        });
+    }, true);
 };

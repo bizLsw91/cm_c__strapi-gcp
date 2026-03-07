@@ -66,7 +66,54 @@
 | 리전 | `asia-northeast3 (서울)` |
 | PROD 버킷 | `store-892ea.firebasestorage.app`  |
 | DEV 버킷 | `store-892ea-firebasestorage-app-dev (PROD 260305 5PM 복제 버전)` |
-| CDN 연동 | ``     |
+| CDN 연동 | `없음` |
+
+### 🛠️ Firebase Storage 필수 설정 (중요)
+새로운 버킷을 생성하거나 초기화할 때 반드시 아래 두 가지 설정을 완료해야 기능이 정상 작동합니다.
+
+#### 1. 보안 규칙 (Security Rules)
+Firebase 콘솔 -> Storage -> 규칙 탭에서 수정:
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read: if true;   // 누구나 조회 가능 (public)
+      allow write: if false;  // 업로드는 서버 권한(IAM)으로만
+    }
+  }
+}
+```
+
+#### 2. CORS 설정 (다운로드 및 대시보드 노출용)
+Google Cloud Shell에서 아래 명령어 실행 (도메인 소유자만 가능):
+```bash
+# 1. 설정 파일 생성
+cat <<EOF > cors.json
+[
+  {
+    "origin": ["https://admin.culturemarketing.co.kr", "http://localhost:1338"],
+    "method": ["GET", "HEAD", "OPTIONS"],
+    "responseHeader": ["*"],
+    "maxAgeSeconds": 3600
+  }
+]
+EOF
+
+# 2. 버킷에 적용
+gsutil cors set cors.json gs://YOUR_BUCKET_NAME
+```
+
+#### 3. 프로바이더 코드 내 필수 옵션 (이미지 노출 핵심)
+업로드 로직(`src/providers/upload-firebase-custom/index.ts`)에서 파일을 저장할 때, 반드시 `public: true` 옵션이 포함되어야 브라우저에서 접근 가능한 공개 URL이 생성됩니다.
+
+```typescript
+await fileRef.save(file.buffer!, {
+    public: true,      // 👈 매우 중요: 공용 읽기 권한을 개체별로 부여
+    contentType: file.mime,
+    resumable: false,  // 메모리 절약
+});
+```
 
 ---
 
@@ -76,7 +123,7 @@
 |----------|------|------|
 | `@strapi/plugin-users-permissions` | `5.9.0` | 사용자 권한 관리 및 커스텀 필드 확장 |
 | `@strapi/plugin-i18n` | `5.0.0` | 다국어 지원 (ko/en) |
-| `@dev.w-strapi/sharp-lsw-provider-firebase-storage` | `1.0.6` | Firebase Storage 업로드 및 리사이징 |
+| `src/providers/upload-firebase-custom` | `로컬` | **[커스텀]** 백엔드 sharp 기반 WebP 변환 및 다이내믹 압축 (900px, 800KB) |
 | `@_sh/strapi-plugin-ckeditor` | `5.0.1` | 에디터 활용 및 한글 툴팁 지원 |
 | `@strapi/provider-email-nodemailer` | `5.9.0` | Gmail SMTP 기반 이메일 발송 |
 
@@ -89,7 +136,7 @@
 - **로그 최적화**: `MISSING_TRANSLATION` 콘솔 에러 강제 억제 처리
 
 ### 2. 미디어 처리 및 검증
-- **이미지 최적화**: 브라우저 사이드에서 WebP 변환 및 리사이징 수행 (`imageProcessor.ts`)
+- **이미지 최적화**: **백엔드(upload-provider)**에서 `sharp`를 이용해 WebP 변환, 세로 900px 리사이징 및 800KB 목표 다이내믹 압축 루프 수행
 - **파일 검증**: `DOC` 컬렉션의 PDF 업로드 시 확장자 검증 (`pdfValidator.ts`)
 
 ### 3. UI/UX 커스텀
