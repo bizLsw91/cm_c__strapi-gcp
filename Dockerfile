@@ -32,8 +32,8 @@ ENV SMTP_HOST=smtp.gmail.com
 ENV SMTP_PORT=587
 ENV SMTP_USERNAME=build-placeholder
 ENV SMTP_PASSWORD=build-placeholder
-ENV URL=http://localhost:1337
-ENV PUBLIC_URL=http://localhost:1337
+ENV URL=https://admin.culturemarketing.co.kr
+ENV PUBLIC_URL=https://admin.culturemarketing.co.kr
 
 COPY package*.json ./
 RUN npm ci
