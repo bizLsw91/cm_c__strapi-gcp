@@ -170,7 +170,11 @@ module.exports = {
             }
 
             // 2. 백엔드 이미지 리사이징 및 WebP 변환 (사용자 개량 버전 로직)
-            if (isImageMime(file.mime) && !file.mime.includes('svg')) { // SVG는 변환 제외
+            const isSvg = file.mime?.includes('svg') || file.ext?.toLowerCase() === '.svg';
+            const isIco = file.mime?.includes('icon') || file.ext?.toLowerCase() === '.ico';
+            
+            // sharp 지원 및 변환 대상 이미지 판별 (.ico, .svg는 원본 유지)
+            if (isImageMime(file.mime) && !isSvg && !isIco) {
                 try {
                     const sharp = require('sharp');
                     let quality = initialQuality;
@@ -206,20 +210,26 @@ module.exports = {
                     console.log(`[upload-provider] 🌟 개량 버전 WebP 변환 성공! (품질: ${quality}, 크기: ${(rawBuffer.length / 1024).toFixed(1)} KB)`);
 
                 } catch (sharpErr: any) {
-                    console.warn('[upload-provider] ❌ sharp 변환 실패, 원본 유지:', sharpErr.message);
+                    console.warn(`[upload-provider] ❌ sharp 변환 실패 (${file.name}), 원본 유지:`, sharpErr.message);
                 }
                 
                 file.buffer = rawBuffer;
                 file.size = rawBuffer.length / 1024;
                 delete file.stream;
             } else {
-                // 비이미지(PDF, 동영상, SVG 등) 용량 검사 및 통과
+                // 비이미지 또는 변환 제외 대상(SVG, ICO 등)
                 if (rawBuffer.length > MAX_SERVER_BYTES * 2) { 
-                    throw new Error(`[upload-provider] 허용 상한 용량 초과`);
+                    throw new Error(`[upload-provider] 허용 상한 용량 초과 (${(rawBuffer.length / 1024).toFixed(1)} KB)`);
                 }
                 file.buffer = rawBuffer;
                 file.size = rawBuffer.length / 1024;
                 delete file.stream;
+
+                // .ico 파일의 경우 최소한의 width, height 설정 (Strapi UI 대응)
+                if (isIco && (!file.width || !file.height)) {
+                    file.width = 32;
+                    file.height = 32;
+                }
             }
 
             // 3. Firebase 업로드

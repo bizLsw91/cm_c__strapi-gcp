@@ -89,18 +89,20 @@ export default factories.createCoreController('api::notice.notice'
 
             // strapi.db.query를 사용하면 updatedAt이 자동으로 갱신되지 않습니다.
             const entry = await strapi.db.query('api::notice.notice').findOne({
-                where: { id }
+                where: { documentId: id }
             });
 
             if (!entry) {
                 return ctx.notFound('Notice not found');
             }
 
-            const updatedEntry = await strapi.db.query('api::notice.notice').update({
-                where: { id },
-                data: {
-                    view_cnt: (entry.view_cnt || 0) + 1
-                }
+            const tableName = strapi.db.metadata.get('api::notice.notice').tableName;
+            await strapi.db.connection(tableName)
+                .where({ id: entry.id })
+                .update({ view_cnt: (entry.view_cnt || 0) + 1 });
+
+            const updatedEntry = await strapi.db.query('api::notice.notice').findOne({
+                where: { id: entry.id }
             });
 
             return this.transformResponse(updatedEntry);

@@ -92,18 +92,20 @@ export default factories.createCoreController('api::notice-en.notice-en',
             }
 
             const entry = await strapi.db.query('api::notice-en.notice-en').findOne({
-                where: { id }
+                where: { documentId: id }
             });
 
             if (!entry) {
                 return ctx.notFound('Notice not found');
             }
 
-            const updatedEntry = await strapi.db.query('api::notice-en.notice-en').update({
-                where: { id },
-                data: {
-                    view_cnt: (entry.view_cnt || 0) + 1
-                }
+            const tableName = strapi.db.metadata.get('api::notice-en.notice-en').tableName;
+            await strapi.db.connection(tableName)
+                .where({ id: entry.id })
+                .update({ view_cnt: (entry.view_cnt || 0) + 1 });
+
+            const updatedEntry = await strapi.db.query('api::notice-en.notice-en').findOne({
+                where: { id: entry.id }
             });
 
             return this.transformResponse(updatedEntry);
