@@ -550,6 +550,7 @@ export interface ApiDocDoc extends Struct.SingleTypeSchema {
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::doc.doc'> &
       Schema.Attribute.Private;
     PDF: Schema.Attribute.Media<'files'> & Schema.Attribute.Required;
+    PDF_FILE_NAME: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
