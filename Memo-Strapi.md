@@ -24,6 +24,29 @@
 
 ---
 
+## 🛠️ 개발용 외부 노출 (BE:dev)
+
+`BE:dev`는 로컬 개발 서버(`BE:local`)를 `cloudflared` 터널을 사용하여 임시로 외부로 노출하는 방식입니다.
+
+### 🏃 실행 단계
+
+1. **로컬 서버 구동**: `npm run dev` 등을 통해 로컬에서 서비스를 실행합니다.
+2. **터널 생성**: 터미널(cmd)에서 아래 명령어를 실행합니다.
+   ```bash
+   cloudflared tunnel --url http://localhost:1338
+   ```
+3. **URL 생성 확인**: 실행 결과로 생성된 `https://*.trycloudflare.com` 형태의 임시 URL을 복사합니다.
+
+### 🔧 적용 및 설정
+
+생성된 임시 URL이 정상 작동하려면 아래 항목들에 해당 URL을 적용해야 합니다.
+
+1. **FE:dev (프론트엔드)**: `Strapi-API-URL` 설정에 새 URL 적용.
+2. **Firebase Cloud Shell**: `cors.json` 파일의 `origin` 목록에 새 URL 추가 후 적용 (`gsutil cors set ...`).
+3. **BE .env**: 백엔드 로컬 `.env` 파일의 `URL` 변수에 새 URL 적용.
+
+---
+
 ## 💻 컴퓨팅 자원 (서버)
 
 | 항목              | 내용                       |
@@ -92,7 +115,7 @@ Google Cloud Shell에서 아래 명령어 실행 (도메인 소유자만 가능)
 cat <<EOF > cors.json
 [
   {
-    "origin": ["https://admin.culturemarketing.co.kr", "http://localhost:1338"],
+    "origin": ["https://admin.culturemarketing.co.kr", "https://attendance-well-timber-formula.trycloudflare.com"],
     "method": ["GET", "HEAD", "OPTIONS"],
     "responseHeader": ["*"],
     "maxAgeSeconds": 3600
@@ -101,7 +124,7 @@ cat <<EOF > cors.json
 EOF
 
 # 2. 버킷에 적용
-gsutil cors set cors.json gs://YOUR_BUCKET_NAME
+gsutil cors set cors.json gs://store-892ea-firebasestorage-app-dev
 ```
 
 #### 3. 프로바이더 코드 내 필수 옵션 (이미지 노출 핵심)
@@ -115,7 +138,7 @@ await fileRef.save(file.buffer!, {
 });
 ```
 
----
+1-
 
 ## 📦 주요 플러그인 / 패키지
 
