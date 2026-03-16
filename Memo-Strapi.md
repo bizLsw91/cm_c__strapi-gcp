@@ -30,8 +30,9 @@
 
 ### 🏃 실행 단계
 
+0. **.env 파일 설정**: `URL` 변수에 `http://localhost:1338` 적용
 1. **로컬 서버 구동**: `npm run dev` 등을 통해 로컬에서 서비스를 실행합니다.
-2. **터널 생성**: 터미널(cmd)에서 아래 명령어를 실행합니다.
+2. **터널 생성**: 새 터미널에서 아래 명령어를 실행합니다.
    ```bash
    cloudflared tunnel --url http://localhost:1338
    ```
@@ -43,7 +44,7 @@
 
 1. **FE:dev (프론트엔드)**: `Strapi-API-URL` 설정에 새 URL 적용.
 2. **Firebase Cloud Shell**: `cors.json` 파일의 `origin` 목록에 새 URL 추가 후 적용 (`gsutil cors set ...`).
-3. **BE .env**: 백엔드 로컬 `.env` 파일의 `URL` 변수에 새 URL 적용.
+3. **BE .env**: 백엔드 로컬 `.env` 파일의 `URL` 변수에 새 URL 적용 후 `npm run dev`로 재실행.
 
 ---
 

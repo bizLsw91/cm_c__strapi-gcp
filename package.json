@@ -9,6 +9,7 @@
     "deploy": "strapi deploy",
     "dev": "strapi develop",
     "dev:bell": "node scripts/bell-dev.mjs",
+    "dev:bell:stop": "node scripts/bell-cleanup.mjs",
     "seed:example": "node ./scripts/seed.js",
     "start": "strapi start",
     "strapi": "strapi"

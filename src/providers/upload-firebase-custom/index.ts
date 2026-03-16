@@ -155,12 +155,12 @@ module.exports = {
             return bucket.file(config.sortInStorage ? fullPath : fileName);
         };
 
-        /* ---------- 처리 및 업로드 ---------- */
+        /* ---------- 검증 및 업로드 ---------- */
         const processAndUpload = async (file: File): Promise<void> => {
             console.log(`--⬆️ Upload Start <${file.name}> (${file.mime})`);
 
             // 1. 버퍼 확보
-            let rawBuffer: Buffer | null = null;
+            let rawBuffer: Buffer;
             if (file.buffer) {
                 rawBuffer = file.buffer;
             } else if (file.stream) {
@@ -169,81 +169,50 @@ module.exports = {
                 throw new Error('File stream/buffer missing');
             }
 
-            // 2. 백엔드 이미지 리사이징 및 WebP 변환 (사용자 개량 버전 로직)
-            const isSvg = file.mime?.includes('svg') || file.ext?.toLowerCase() === '.svg';
+            // 2. 검증 (브라우저에서 이미 WebP 변환됨 - 용량만 확인)
+            if (rawBuffer.length > MAX_SERVER_BYTES) {
+                throw new Error(
+                    `[upload-provider] 허용 상한 용량 초과 ` +
+                    `(${(rawBuffer.length / 1024).toFixed(1)} KB, 최대 ${(MAX_SERVER_BYTES / 1024 / 1024).toFixed(1)} MB)`
+                );
+            }
+
             const isIco = file.mime?.includes('icon') || file.ext?.toLowerCase() === '.ico';
-            
-            // sharp 지원 및 변환 대상 이미지 판별 (.ico, .svg는 원본 유지)
+            const isSvg = file.mime?.includes('svg')  || file.ext?.toLowerCase() === '.svg';
+
+            // .ico 최소 메타 설정 (Strapi UI 대응)
+            if (isIco && (!file.width || !file.height)) {
+                file.width  = 32;
+                file.height = 32;
+            }
+
+            // 이미지 width/height 메타 추출 (sharp 있을 때만, 변환은 하지 않음)
             if (isImageMime(file.mime) && !isSvg && !isIco) {
                 try {
                     const sharp = require('sharp');
-                    let quality = initialQuality;
-                    
-                    // 최초 변환 시도 (설정된 세로 기준 리사이징 + WebP)
-                    let processedBuffer = await sharp(rawBuffer)
-                        .resize({ height: resizeHeight, withoutEnlargement: true })
-                        .webp({ quality })
-                        .toBuffer();
-
-                    // 다이내믹 압축 루프: maxWebpSize 초과 시 품질을 qualityStep씩 깎으며 재시도
-                    while (processedBuffer.length > maxWebpSize && quality > minQuality) {
-                        quality -= qualityStep;
-                        processedBuffer = await sharp(rawBuffer)
-                            .resize({ height: resizeHeight, withoutEnlargement: true })
-                            .webp({ quality })
-                            .toBuffer();
-                    }
-
-                    // 최종 처리된 이미지의 메타데이터 추출 (Strapi DB 저장용)
-                    const metadata = await sharp(processedBuffer).metadata();
-                    file.width = metadata.width;
-                    file.height = metadata.height;
-                    
-                    // 파일 정보 갱신 (확장자 및 마임타입)
-                    rawBuffer = processedBuffer;
-                    file.mime = 'image/webp';
-                    file.ext = '.webp';
-                    
-                    // 파일 표시용 이름 변경 (확장자만 .webp로 교체)
-                    file.name = path.basename(file.name, path.extname(file.name)) + '.webp';
-
-                    console.log(`[upload-provider] 🌟 개량 버전 WebP 변환 성공! (품질: ${quality}, 크기: ${(rawBuffer.length / 1024).toFixed(1)} KB)`);
-
-                } catch (sharpErr: any) {
-                    console.warn(`[upload-provider] ❌ sharp 변환 실패 (${file.name}), 원본 유지:`, sharpErr.message);
-                }
-                
-                file.buffer = rawBuffer;
-                file.size = rawBuffer.length / 1024;
-                delete file.stream;
-            } else {
-                // 비이미지 또는 변환 제외 대상(SVG, ICO 등)
-                if (rawBuffer.length > MAX_SERVER_BYTES * 2) { 
-                    throw new Error(`[upload-provider] 허용 상한 용량 초과 (${(rawBuffer.length / 1024).toFixed(1)} KB)`);
-                }
-                file.buffer = rawBuffer;
-                file.size = rawBuffer.length / 1024;
-                delete file.stream;
-
-                // .ico 파일의 경우 최소한의 width, height 설정 (Strapi UI 대응)
-                if (isIco && (!file.width || !file.height)) {
-                    file.width = 32;
-                    file.height = 32;
-                }
+                    const meta = await sharp(rawBuffer).metadata();
+                    file.width  = meta.width;
+                    file.height = meta.height;
+                } catch { /* sharp 없으면 메타 생략 */ }
+                console.log(`[upload-provider] ✅ 검증 완료 (${(rawBuffer.length / 1024).toFixed(1)} KB, ${file.width ?? '?'}x${file.height ?? '?'})`);
             }
+
+            file.buffer = rawBuffer;
+            file.size   = rawBuffer.length / 1024;
+            delete file.stream;
 
             // 3. Firebase 업로드
             const fileRef = getFileRef(file);
             const fileURL = `https://storage.googleapis.com/${config.bucket}/${fileRef.name}`;
 
-            await fileRef.save(file.buffer!, {
+            await fileRef.save(file.buffer, {
                 public: true,
                 contentType: file.mime,
-                resumable: false, // 메모리 절약
+                resumable: false,
             });
 
-            file.url = fileURL;
-            file.buffer = null; // GC 힌트
+            file.url    = fileURL;
+            file.buffer = null;
             print('✅ Uploaded:', file.name);
         };
 

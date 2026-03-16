@@ -22,7 +22,7 @@ export default ({ env }) => ({
   },
   adminUrl: {
     // ✅ undefined 연산 방지
-    domain: env('PUBLIC_URL') || `localhost:${env('PORT', '1337')}`,
+    domain: env('PUBLIC_URL') || `localhost:${env('PORT', '1338')}`,
   },
   preview: {
     enabled: false,

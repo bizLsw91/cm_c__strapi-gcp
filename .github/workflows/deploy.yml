@@ -53,7 +53,7 @@ jobs:
           username: ${{ secrets.GCP_USERNAME }}
           key: ${{ secrets.GCP_SSH_KEY }}
           port: ${{ secrets.GCP_PORT || 22 }}
-          command_timeout: 30m
+          command_timeout: 35m
           script_stop: true
           envs: GHCR_TOKEN,DATABASE_PASSWORD,JWT_SECRET,ADMIN_JWT_SECRET,APP_KEYS,API_TOKEN_SALT,TRANSFER_TOKEN_SALT,SMTP_PASSWORD,FIREBASE_SERVICE_ACCOUNT
           script: |

@@ -1,18 +1,17 @@
 /* ──────────────────────────────────────────────────────────────
    📸 브라우저 사이드 이미지 처리 (Canvas API → WebP 변환)
-   이미지를 서버로 보내기 전에 브라우저에서 리사이징 + WebP 변환을 수행합니다.
-   서버(Firebase Storage 프로바이더)는 검증 및 업로드만 담당합니다.
+   업로드 전 브라우저에서 리사이징 + WebP 변환을 수행합니다.
    ────────────────────────────────────────────────────────────── */
-const WEBP_MAX_WIDTH = 1921;       // 최대 가로 픽셀 (초과 시 비율 유지하며 축소)
-const WEBP_INIT_QUALITY = 0.85;       // 첫 인코딩 품질
-const WEBP_QUALITY_STEP = 0.15;       // 크기 초과 시 품질 감소 단위
-const WEBP_MIN_QUALITY = 0.40;       // 품질 하한선
-const WEBP_MAX_BYTES = 1.5 * 1024 * 1024; // 1.5 MB 상한
+
+const WEBP_MAX_WIDTH = 1921;
+const WEBP_INIT_QUALITY = 0.80;       // 서버 설정(80)과 동기화
+const WEBP_QUALITY_STEP = 0.10;
+const WEBP_MIN_QUALITY = 0.30;
+const WEBP_MAX_BYTES = 300 * 1024;
 const WEBP_PROCESSED_FLAG = '__webp_converted__';
 
 /**
  * Canvas API 를 이용해 이미지 File 을 WebP 로 리사이징·변환합니다.
- * 크기가 WEBP_MAX_BYTES 를 초과하면 품질을 단계적으로 낮춥니다.
  */
 const convertImageToWebP = (file: File): Promise<File> =>
     new Promise((resolve, reject) => {
@@ -22,14 +21,12 @@ const convertImageToWebP = (file: File): Promise<File> =>
         img.onload = () => {
             URL.revokeObjectURL(objectUrl);
 
-            // 1. 리사이징 계산
             let { width, height } = img;
             if (width > WEBP_MAX_WIDTH) {
                 height = Math.round((height * WEBP_MAX_WIDTH) / width);
                 width = WEBP_MAX_WIDTH;
             }
 
-            // 2. Canvas 드로잉
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
@@ -39,7 +36,6 @@ const convertImageToWebP = (file: File): Promise<File> =>
 
             const baseName = file.name.replace(/\.[^.]+$/, '') + '.webp';
 
-            // 3. 품질 단계적 인코딩
             const encode = (quality: number) => {
                 canvas.toBlob((blob) => {
                     if (!blob) return reject(new Error('[MediaWebP] toBlob 실패'));
@@ -67,69 +63,124 @@ const convertImageToWebP = (file: File): Promise<File> =>
         img.src = objectUrl;
     });
 
-/** 업로드 변환 오버레이 표시/제거 */
+/* ──────── 변환 중 오버레이 ──────── */
 const showConvertingOverlay = () => {
-    const el = document.createElement('div');
-    el.id = '__webp_overlay__';
-    el.textContent = '이미지 변환 중…';
-    el.style.cssText = [
-        'position:fixed', 'top:50%', 'left:50%',
-        'transform:translate(-50%,-50%)',
-        'background:rgba(0,0,0,.7)', 'color:#fff',
-        'padding:12px 28px', 'border-radius:10px',
-        'z-index:99999', 'font-size:14px', 'pointer-events:none',
+    if (document.getElementById('__webp_overlay__')) return;
+
+    const backdrop = document.createElement('div');
+    backdrop.id = '__webp_overlay__';
+    backdrop.style.cssText = [
+        'position:fixed', 'inset:0',
+        'background:rgba(0,0,0,0.6)',
+        'z-index:99999',
+        'display:flex', 'align-items:center', 'justify-content:center',
+        'pointer-events:none',
     ].join(';');
-    document.body.appendChild(el);
+
+    const card = document.createElement('div');
+    card.style.cssText = [
+        'background:#1a1a2e',
+        'border:1px solid rgba(255,255,255,0.12)',
+        'border-radius:14px',
+        'padding:28px 36px',
+        'min-width:240px',
+        'box-shadow:0 8px 32px rgba(0,0,0,0.5)',
+        'text-align:center',
+        'font-family:system-ui,sans-serif',
+    ].join(';');
+
+    const title = document.createElement('div');
+    title.textContent = '이미지 변환 중…';
+    title.style.cssText = 'color:#fff;font-size:15px;font-weight:600;margin-bottom:18px;';
+
+    const barBg = document.createElement('div');
+    barBg.style.cssText = [
+        'width:100%', 'height:6px',
+        'background:rgba(255,255,255,0.12)',
+        'border-radius:99px',
+        'overflow:hidden',
+        'margin-bottom:12px',
+    ].join(';');
+
+    // 애니메이션 바 (CSS animation)
+    const bar = document.createElement('div');
+    bar.id = '__webp_overlay_bar__';
+    bar.style.cssText = [
+        'height:100%', 'width:0%',
+        'background:linear-gradient(90deg,#6366f1,#a855f7)',
+        'border-radius:99px',
+        'transition:width 0.3s ease',
+    ].join(';');
+    barBg.appendChild(bar);
+
+    const pct = document.createElement('span');
+    pct.id = '__webp_overlay_pct__';
+    pct.textContent = '0%';
+    pct.style.cssText = 'color:rgba(255,255,255,0.6);font-size:13px;';
+
+    const sub = document.createElement('div');
+    sub.textContent = 'WebP 포맷으로 최적화하는 중…';
+    sub.style.cssText = 'color:rgba(255,255,255,0.35);font-size:11px;margin-top:6px;';
+
+    card.append(title, barBg, pct, sub);
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+
+    // 간단한 fake 진행바 (변환 중 시각적 피드백용)
+    let v = 0;
+    const timer = setInterval(() => {
+        v = v < 85 ? v + (85 - v) * 0.04 : v;
+        const el = document.getElementById('__webp_overlay_bar__');
+        const pt = document.getElementById('__webp_overlay_pct__');
+        if (el) el.style.width = `${v.toFixed(1)}%`;
+        if (pt) pt.textContent = `${Math.round(v)}%`;
+    }, 100);
+    (backdrop as any).__timer__ = timer;
 };
-const hideConvertingOverlay = () =>
-    document.getElementById('__webp_overlay__')?.remove();
 
-/**
- * document 전체에서 <input type="file"> 의 change 이벤트와
- * drop, paste 이벤트를 캡처 페이즈에서 가로채서 이미지 파일을 WebP 로 변환한 뒤 React 에 재전달합니다.
- */
+const hideConvertingOverlay = () => {
+    const el = document.getElementById('__webp_overlay__');
+    if (!el) return;
+    clearInterval((el as any).__timer__);
+    el.remove();
+};
+
+/* ──────── 공통 파일 처리기 ──────── */
+const processFiles = async (
+    files: File[],
+    eventToStop: Event,
+    reDispatchFn: (dt: DataTransfer) => void
+) => {
+    const hasImages = files.some((f) => f.type.startsWith('image/'));
+    if (!hasImages) return;
+
+    eventToStop.stopImmediatePropagation();
+    eventToStop.preventDefault();
+
+    showConvertingOverlay();
+    try {
+        const converted = await Promise.all(
+            files.map((f) =>
+                f.type.startsWith('image/') ? convertImageToWebP(f) : Promise.resolve(f),
+            ),
+        );
+        console.log('[MediaWebP] ✨ WebP 변환 성공!', converted.map(f => f.name));
+        const dt = new DataTransfer();
+        converted.forEach((f) => dt.items.add(f));
+        reDispatchFn(dt);
+    } catch (err) {
+        console.warn('[MediaWebP] ❌ 변환 실패, 원본으로 대체:', err);
+        const dt = new DataTransfer();
+        files.forEach(f => dt.items.add(f));
+        reDispatchFn(dt);
+    } finally {
+        hideConvertingOverlay();
+    }
+};
+
+/* ──────── 이벤트 인터셉터 ──────── */
 export const setupUploadInterceptor = () => {
-    // 공통 파일 처리기
-    const processFiles = async (
-        files: File[],
-        eventToStop: Event,
-        reDispatchFn: (dt: DataTransfer) => void
-    ) => {
-        const hasImages = files.some((f) => f.type.startsWith('image/'));
-        if (!hasImages) return; // 이미지 없으면 통과
-
-        // React 이벤트 핸들러가 원본 이벤트를 보지 못하도록 차단
-        eventToStop.stopImmediatePropagation();
-        eventToStop.preventDefault(); // 기본 동작(브라우저 열기 등) 방지
-
-        showConvertingOverlay();
-        try {
-            const converted = await Promise.all(
-                files.map((f) =>
-                    f.type.startsWith('image/') ? convertImageToWebP(f) : Promise.resolve(f),
-                ),
-            );
-
-            console.log('[MediaWebP] ✨ 이미지 WebP 변환 성공!', converted.map(f => f.name));
-
-            const dt = new DataTransfer();
-            converted.forEach((f) => dt.items.add(f));
-            
-            // 변환된 파일 리스트를 사용하여 이벤트 재실행
-            reDispatchFn(dt);
-            
-        } catch (err) {
-            console.warn('[MediaWebP] ❌ 이미지 변환 실패, 원본 파일로 대체:', err);
-            // 실패 시 원본 그대로 진행
-            const dt = new DataTransfer();
-            files.forEach(f => dt.items.add(f));
-            reDispatchFn(dt);
-        } finally {
-            hideConvertingOverlay();
-        }
-    };
-
-    // 1. INPUT 바인딩 (change 이벤트)
+    // 1. INPUT change
     document.addEventListener('change', async (e: Event) => {
         const input = e.target as HTMLInputElement;
         if (input.type !== 'file' || !input.files?.length) return;
@@ -137,7 +188,7 @@ export const setupUploadInterceptor = () => {
 
         console.log('[MediaWebP] 파일 선택 (INPUT) 감지');
         const files = Array.from(input.files);
-        processFiles(files, e, (newDt) => {
+        await processFiles(files, e, (newDt) => {
             Object.defineProperty(input, 'files', { value: newDt.files, configurable: true });
             (input as any)[WEBP_PROCESSED_FLAG] = true;
             input.dispatchEvent(new Event('change', { bubbles: e.bubbles }));
@@ -145,55 +196,46 @@ export const setupUploadInterceptor = () => {
         });
     }, true);
 
-    // 2. DROP 바인딩 (드래그 앤 드롭)
+    // 2. DROP
     document.addEventListener('drop', async (e: DragEvent) => {
         if (!e.dataTransfer?.files?.length) return;
         if ((e as any)[WEBP_PROCESSED_FLAG]) return;
 
-        console.log('[MediaWebP] 🖱️ 드래그 앤 드롭 (DROP) 감지!');
-
+        console.log('[MediaWebP] 🖱️ DROP 감지');
         const files = Array.from(e.dataTransfer.files);
-        processFiles(files, e, (newDt) => {
-            // 새 DragEvent 생성하여 동일 타겟에 Dispatch
+        await processFiles(files, e, (newDt) => {
             const dropEvent = new DragEvent('drop', {
                 bubbles: e.bubbles,
                 cancelable: e.cancelable,
                 clientX: e.clientX,
                 clientY: e.clientY,
-                screenX: e.screenX,
-                screenY: e.screenY,
-                dataTransfer: new DataTransfer() // Edge 케이스 방지용
+                dataTransfer: new DataTransfer(),
             });
-            
-            // dataTransfer 프로퍼티 오버라이드 (React Dropzone 우회 방지: items까지 완벽 교체)
             Object.defineProperty(dropEvent, 'dataTransfer', {
                 value: { files: newDt.files, items: newDt.items, types: newDt.types },
             });
-
             (dropEvent as any)[WEBP_PROCESSED_FLAG] = true;
             e.target?.dispatchEvent(dropEvent);
         });
     }, true);
 
-    // 3. PASTE 바인딩 (클립보드 붙여넣기)
+    // 3. PASTE
     document.addEventListener('paste', async (e: ClipboardEvent) => {
         if (!e.clipboardData?.files?.length) return;
         if ((e as any)[WEBP_PROCESSED_FLAG]) return;
 
         const files = Array.from(e.clipboardData.files);
-        processFiles(files, e, (newDt) => {
-             const pasteEvent = new ClipboardEvent('paste', {
-                 bubbles: e.bubbles,
-                 cancelable: e.cancelable,
-                 clipboardData: new DataTransfer()
-             });
-
-             Object.defineProperty(pasteEvent, 'clipboardData', {
-                 value: { files: newDt.files, items: newDt.items, types: newDt.types },
-             });
-
-             (pasteEvent as any)[WEBP_PROCESSED_FLAG] = true;
-             e.target?.dispatchEvent(pasteEvent);
+        await processFiles(files, e, (newDt) => {
+            const pasteEvent = new ClipboardEvent('paste', {
+                bubbles: e.bubbles,
+                cancelable: e.cancelable,
+                clipboardData: new DataTransfer(),
+            });
+            Object.defineProperty(pasteEvent, 'clipboardData', {
+                value: { files: newDt.files, items: newDt.items, types: newDt.types },
+            });
+            (pasteEvent as any)[WEBP_PROCESSED_FLAG] = true;
+            e.target?.dispatchEvent(pasteEvent);
         });
     }, true);
 };

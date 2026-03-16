@@ -71,7 +71,9 @@ export default {
             if (args.some(arg =>
                 (typeof arg === 'string' && arg.includes('MISSING_TRANSLATION')) ||
                 (arg instanceof Error && arg.message.includes('MISSING_TRANSLATION')) ||
-                (arg && typeof arg === 'object' && arg.stack?.includes('MISSING_TRANSLATION'))
+                (arg && typeof arg === 'object' && arg.stack?.includes('MISSING_TRANSLATION')) ||
+                // ── React: `value` prop on `input` should not be null 경고 억제 ──
+                (typeof arg === 'string' && arg.includes('`value` prop on `input` should not be null'))
             )) {
                 return;
             }
@@ -90,10 +92,10 @@ export default {
         apis.addEditViewSidePanel([MediaAutoFill]);
         console.log('[app.tsx] MediaAutoFill 커스텀 컴포넌트 주입 완료');
 
-        // 4. (폐기됨) 브라우저 사이드 이미지 WebP 변환
-        // 프론트엔드 환경 변수(React Dropzone 이벤트 캡처, CSP, 터널 타임아웃) 회피를 위해 
-        // 백엔드(Firebase Provider)의 sharp 일괄 변환으로 파이프라인을 이관했습니다.
-        // setupUploadInterceptor();
-        // console.log('[app.tsx] 이미지 업로드 인터셉터 비활성화 (백엔드 이관됨)');
+        // 4. 업로드 진행률 오버레이 (XHR 인터셉터)
+        // /api/upload 요청을 감지해 커스텀 진행률 오버레이를 표시합니다.
+        // 서버에서 sharp 변환 + Firebase 업로드 중 Strapi UI가 0%에 고착되는 문제를 해결합니다.
+        setupUploadInterceptor();
+        console.log('[app.tsx] 업로드 진행률 XHR 인터셉터 등록됨');
     },
 };
