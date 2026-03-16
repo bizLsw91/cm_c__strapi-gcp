@@ -67,23 +67,14 @@ interface InitOptions {
     sortInStorage?: boolean;
     debug?: boolean;
     defaultDirPath?: string;
-    // 브라우저에서 이미 변환했으므로 sharp 관련 옵션은 제거됨
-    resizeOptions?: {
-        width?: number;
-        height?: number;
-    };
-    initialQuality?: number;
-    qualityDecrement?: number;
-    minQuality?: number;
-    maxFileSize?: number;
-    /** 서버에서 허용할 WebP 최대 크기 (바이트). 기본값 3MB */
+    /** 서버에서 허용할 파일 최대 크기 (바이트). 기본값 10MB */
     maxServerFileSizeBytes?: number;
 }
 
 /* ---------- 메인 로직 ---------- */
 module.exports = {
     init(config: InitOptions) {
-        console.log('[upload-provider] 초기화 (백엔드 sharp 개량 변환 모드)');
+        console.log('[upload-provider] 초기화 (Firebase Storage 전용 모드)');
 
         /* [핵심] 업로드 작업을 순차적으로 처리하기 위한 큐 */
         let uploadQueue = Promise.resolve();
@@ -117,15 +108,8 @@ module.exports = {
 
         const bucket = admin.storage().bucket();
 
-        // 서버 측 파일 크기 상한 (브라우저 변환 후 기준, 기본 3 MB)
-        const MAX_SERVER_BYTES = config.maxServerFileSizeBytes ?? 3 * 1024 * 1024;
-
-        // 개량 버전용 동적 압축 옵션 (기본값 설정)
-        const resizeHeight = config.resizeOptions?.height ?? 900;
-        const maxWebpSize = config.maxFileSize ?? 512 * 1024; // 512KB
-        const initialQuality = config.initialQuality ?? 80;
-        const minQuality = config.minQuality ?? 10;
-        const qualityStep = config.qualityDecrement ?? 10;
+        // 서버 측 파일 크기 상한 (기본 10 MB)
+        const MAX_SERVER_BYTES = config.maxServerFileSizeBytes ?? 10 * 1024 * 1024;
 
         /* ----- 디버그 헬퍼 ----- */
         const print = (msg?: any, ...opt: any[]) => {
